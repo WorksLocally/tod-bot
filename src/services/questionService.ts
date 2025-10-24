@@ -4,20 +4,22 @@
  * @module src/services/questionService
  */
 
-const db = require('../database/client');
-const { generateQuestionId } = require('../utils/id');
-const { sanitizeText } = require('../utils/sanitize');
+import db from '../database/client.js';
+import { generateQuestionId } from '../utils/id.js';
+import { sanitizeText } from '../utils/sanitize.js';
 
 const VALID_QUESTION_TYPES = new Set(['truth', 'dare']);
+
+export type QuestionType = 'truth' | 'dare';
 
 /**
  * Normalises and validates a provided question type value.
  *
- * @param {string} type - Raw question type input.
- * @returns {'truth' | 'dare'} - Normalised question type.
- * @throws {Error} If the type value is unsupported.
+ * @param type - Raw question type input.
+ * @returns Normalised question type.
+ * @throws If the type value is unsupported.
  */
-const normalizeType = (type) => {
+const normalizeType = (type: string): QuestionType => {
   if (typeof type !== 'string') {
     throw new Error('Question type must be a string.');
   }
@@ -25,19 +27,33 @@ const normalizeType = (type) => {
   if (!VALID_QUESTION_TYPES.has(normalized)) {
     throw new Error(`Unsupported question type: ${type}`);
   }
-  return /** @type {'truth' | 'dare'} */ (normalized);
+  return normalized as QuestionType;
 };
 
-/**
- * @typedef {Object} StoredQuestion
- * @property {string} question_id - Unique question identifier.
- * @property {'truth' | 'dare'} type - Question category.
- * @property {string} text - Question content.
- * @property {number} position - Position within sequential ordering.
- * @property {string} created_at - ISO timestamp when the question was added.
- * @property {string} updated_at - ISO timestamp when the question was last updated.
- * @property {string | null} created_by - Discord user ID of the creator, if available.
- */
+export interface StoredQuestion {
+  question_id: string;
+  type: QuestionType;
+  text: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+
+interface MaxPositionResult {
+  maxPosition: number;
+}
+
+interface RotationStateResult {
+  lastPosition: number;
+}
+
+interface QuestionForRotation {
+  question_id: string;
+  type: QuestionType;
+  text: string;
+  position: number;
+}
 
 const getMaxPositionStmt = db.prepare(
   'SELECT IFNULL(MAX(position), 0) AS maxPosition FROM questions WHERE type = ?'
@@ -72,13 +88,19 @@ const getFirstQuestionStmt = db.prepare(
   'SELECT question_id, type, text, position FROM questions WHERE type = ? ORDER BY position ASC LIMIT 1'
 );
 
+interface AddQuestionParams {
+  type: string;
+  text: string;
+  createdBy?: string;
+}
+
 /**
  * Inserts a new question at the end of its type list and returns the stored record.
  *
- * @param {{ type: string, text: string, createdBy?: string }} params - Question attributes.
- * @returns {StoredQuestion} - Newly inserted question.
+ * @param params - Question attributes.
+ * @returns Newly inserted question.
  */
-const addQuestion = ({ type, text, createdBy }) => {
+export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): StoredQuestion => {
   const questionType = normalizeType(type);
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
@@ -86,10 +108,10 @@ const addQuestion = ({ type, text, createdBy }) => {
   }
 
   const insert = db.transaction(() => {
-    const maxPosition = getMaxPositionStmt.get(questionType).maxPosition;
+    const maxPosition = (getMaxPositionStmt.get(questionType) as MaxPositionResult).maxPosition;
     const position = maxPosition + 1;
 
-    let questionId;
+    let questionId: string = '';
     let inserted = false;
 
     while (!inserted) {
@@ -104,25 +126,30 @@ const addQuestion = ({ type, text, createdBy }) => {
         );
         inserted = true;
       } catch (error) {
-        if (error.code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+        if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
           throw error;
         }
       }
     }
 
-    return getQuestionByIdStmt.get(questionId);
+    return getQuestionByIdStmt.get(questionId) as StoredQuestion;
   });
 
   return insert();
 };
 
+interface EditQuestionParams {
+  questionId: string;
+  text: string;
+}
+
 /**
  * Updates the text of a stored question.
  *
- * @param {{ questionId: string, text: string }} params - Update payload.
- * @returns {number} - Count of rows affected.
+ * @param params - Update payload.
+ * @returns Count of rows affected.
  */
-const editQuestion = ({ questionId, text }) => {
+export const editQuestion = ({ questionId, text }: EditQuestionParams): number => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
     throw new Error('Question text cannot be empty.');
@@ -135,10 +162,10 @@ const editQuestion = ({ questionId, text }) => {
 /**
  * Removes a question from the database.
  *
- * @param {string} questionId - Identifier of the question to delete.
- * @returns {number} - Count of rows removed.
+ * @param questionId - Identifier of the question to delete.
+ * @returns Count of rows removed.
  */
-const deleteQuestion = (questionId) => {
+export const deleteQuestion = (questionId: string): number => {
   const info = deleteQuestionStmt.run(questionId);
   return info.changes;
 };
@@ -146,41 +173,42 @@ const deleteQuestion = (questionId) => {
 /**
  * Retrieves a question by its identifier.
  *
- * @param {string} questionId - Identifier to query.
- * @returns {StoredQuestion | undefined} - Matching question, if present.
+ * @param questionId - Identifier to query.
+ * @returns Matching question, if present.
  */
-const getQuestionById = (questionId) => getQuestionByIdStmt.get(questionId);
+export const getQuestionById = (questionId: string): StoredQuestion | undefined => {
+  return getQuestionByIdStmt.get(questionId) as StoredQuestion | undefined;
+};
 
 /**
  * Lists questions optionally filtered by type.
  *
- * @param {'truth' | 'dare'} [type] - Optional filter for question type.
- * @returns {StoredQuestion[]} - List of stored questions.
+ * @param type - Optional filter for question type.
+ * @returns List of stored questions.
  */
-const listQuestions = (type) => {
+export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
   if (type) {
     const normalized = normalizeType(type);
-    return listQuestionsByTypeStmt.all(normalized);
+    return listQuestionsByTypeStmt.all(normalized) as StoredQuestion[];
   }
-  return listQuestionsStmt.all();
+  return listQuestionsStmt.all() as StoredQuestion[];
 };
 
 /**
  * Retrieves the next question in rotation for the provided type, wrapping around when necessary.
  *
- * @param {'truth' | 'dare'} type - Question type to fetch.
- * @returns {{ question_id: string, type: 'truth' | 'dare', text: string, position: number } | null} -
- *   The next question or null if none exist.
+ * @param type - Question type to fetch.
+ * @returns The next question or null if none exist.
  */
-const getNextQuestion = (type) => {
+export const getNextQuestion = (type: QuestionType): QuestionForRotation | null => {
   const normalizedType = normalizeType(type);
   const fetch = db.transaction(() => {
-    const state = getRotationStateStmt.get(normalizedType);
+    const state = getRotationStateStmt.get(normalizedType) as RotationStateResult | undefined;
     const lastPosition = state ? state.lastPosition : 0;
-    let nextQuestion = getNextQuestionStmt.get(normalizedType, lastPosition);
+    let nextQuestion = getNextQuestionStmt.get(normalizedType, lastPosition) as QuestionForRotation | undefined;
 
     if (!nextQuestion) {
-      nextQuestion = getFirstQuestionStmt.get(normalizedType);
+      nextQuestion = getFirstQuestionStmt.get(normalizedType) as QuestionForRotation | undefined;
       if (!nextQuestion) {
         return null;
       }
@@ -191,13 +219,4 @@ const getNextQuestion = (type) => {
   });
 
   return fetch();
-};
-
-module.exports = {
-  addQuestion,
-  editQuestion,
-  deleteQuestion,
-  listQuestions,
-  getQuestionById,
-  getNextQuestion,
 };
