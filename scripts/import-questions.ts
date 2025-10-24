@@ -18,7 +18,7 @@ const projectRoot = path.resolve(__dirname, '..');
 /**
  * Main import function that processes both truth and dare JSON files.
  */
-const runImport = async (): Promise<void> => {
+const runImport = (): void => {
   console.log('Starting question import process...\n');
 
   const files = [
@@ -53,7 +53,10 @@ const runImport = async (): Promise<void> => {
           if (err.index >= 0) {
             console.log(`   - Index ${err.index}: ${err.error}`);
             if (err.question) {
-              console.log(`     Question: ${err.question.substring(0, 60)}...`);
+              const preview = err.question.length > 60 
+                ? `${err.question.substring(0, 60)}...` 
+                : err.question;
+              console.log(`     Question: ${preview}`);
             }
           } else {
             console.log(`   - ${err.error}`);
@@ -89,8 +92,4 @@ const runImport = async (): Promise<void> => {
 };
 
 // Run the import
-runImport().catch((error) => {
-  console.error('Fatal error during import:', error);
-  logger.error('Fatal error during import', { error });
-  process.exit(1);
-});
+runImport();
