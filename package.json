@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "deploy:commands": "node scripts/deploy-commands.js"
+    "deploy:commands": "node scripts/deploy-commands.js",
+    "postinstall": "npm rebuild better-sqlite3"
   },
   "engines": {
     "node": ">=20.10 <25",
