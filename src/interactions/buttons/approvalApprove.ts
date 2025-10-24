@@ -91,11 +91,13 @@ export const execute = async (
       status: 'approved',
       resolverId: interaction.user.id,
     });
+    submission.status = 'approved';
+    submission.resolver_id = interaction.user.id;
 
     // Update the approval message
     await updateSubmissionMessageStatus({
       client,
-      submission: { ...submission, status: 'approved', resolver_id: interaction.user.id },
+      submission,
       status: 'approved',
       questionId: question.question_id,
       approverId: interaction.user.id,

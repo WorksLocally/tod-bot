@@ -51,11 +51,13 @@ export const handleRejectModalSubmit = async (
       status: 'rejected',
       resolverId: interaction.user.id,
     });
+    submission.status = 'rejected';
+    submission.resolver_id = interaction.user.id;
 
     // Update the approval message
     await updateSubmissionMessageStatus({
       client,
-      submission: { ...submission, status: 'rejected', resolver_id: interaction.user.id },
+      submission,
       status: 'rejected',
       approverId: interaction.user.id,
       notes: reason || undefined,
