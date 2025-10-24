@@ -4,10 +4,10 @@
  * @module src/handlers/buttonLoader
  */
 
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js';
+import { walkJsFiles } from '../utils/fileWalker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,28 +26,7 @@ export interface ButtonHandler {
  */
 export const loadButtonHandlers = async (): Promise<Map<string | ((customId: string) => boolean), ButtonHandler>> => {
   const buttonsPath = path.join(__dirname, '..', 'interactions', 'buttons');
-  const buttonFiles: string[] = [];
-
-  /**
-   * Recursively collects compiled JavaScript files (from TypeScript sources) from the provided directory.
-   *
-   * @param dir - Directory to scan for handlers.
-   */
-  const walk = (dir: string): void => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const entryPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(entryPath);
-      } else if (entry.isFile() && entry.name.endsWith('.js')) {
-        buttonFiles.push(entryPath);
-      }
-    }
-  };
-
-  if (fs.existsSync(buttonsPath)) {
-    walk(buttonsPath);
-  }
+  const buttonFiles = walkJsFiles(buttonsPath);
 
   const handlers = new Map<string | ((customId: string) => boolean), ButtonHandler>();
   for (const file of buttonFiles) {

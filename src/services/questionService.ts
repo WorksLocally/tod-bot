@@ -55,38 +55,40 @@ interface QuestionForRotation {
   position: number;
 }
 
-const getMaxPositionStmt = db.prepare(
-  'SELECT IFNULL(MAX(position), 0) AS maxPosition FROM questions WHERE type = ?'
-);
-const insertQuestionStmt = db.prepare(
-  'INSERT INTO questions (question_id, type, text, created_by, position) VALUES (?, ?, ?, ?, ?)'
-);
-const updateQuestionStmt = db.prepare(
-  "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ?"
-);
-const deleteQuestionStmt = db.prepare('DELETE FROM questions WHERE question_id = ?');
-const getQuestionByIdStmt = db.prepare(
-  'SELECT question_id, type, text, position, created_at, updated_at, created_by FROM questions WHERE question_id = ?'
-);
-const listQuestionsStmt = db.prepare(
-  'SELECT question_id, type, text, position, created_at, updated_at, created_by FROM questions ORDER BY type, position ASC'
-);
-const listQuestionsByTypeStmt = db.prepare(
-  'SELECT question_id, type, text, position, created_at, updated_at, created_by FROM questions WHERE type = ? ORDER BY position ASC'
-);
-
-const getRotationStateStmt = db.prepare(
-  'SELECT last_position AS lastPosition FROM rotation_state WHERE type = ?'
-);
-const upsertRotationStateStmt = db.prepare(
-  'INSERT INTO rotation_state (type, last_position) VALUES (?, ?) ON CONFLICT(type) DO UPDATE SET last_position = excluded.last_position'
-);
-const getNextQuestionStmt = db.prepare(
-  'SELECT question_id, type, text, position FROM questions WHERE type = ? AND position > ? ORDER BY position ASC LIMIT 1'
-);
-const getFirstQuestionStmt = db.prepare(
-  'SELECT question_id, type, text, position FROM questions WHERE type = ? ORDER BY position ASC LIMIT 1'
-);
+// Prepared statements are cached for performance
+const STATEMENTS = {
+  getMaxPosition: db.prepare(
+    'SELECT IFNULL(MAX(position), 0) AS maxPosition FROM questions WHERE type = ?'
+  ),
+  insertQuestion: db.prepare(
+    'INSERT INTO questions (question_id, type, text, created_by, position) VALUES (?, ?, ?, ?, ?)'
+  ),
+  updateQuestion: db.prepare(
+    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ?"
+  ),
+  deleteQuestion: db.prepare('DELETE FROM questions WHERE question_id = ?'),
+  getQuestionById: db.prepare(
+    'SELECT question_id, type, text, position, created_at, updated_at, created_by FROM questions WHERE question_id = ?'
+  ),
+  listQuestions: db.prepare(
+    'SELECT question_id, type, text, position, created_at, updated_at, created_by FROM questions ORDER BY type, position ASC'
+  ),
+  listQuestionsByType: db.prepare(
+    'SELECT question_id, type, text, position, created_at, updated_at, created_by FROM questions WHERE type = ? ORDER BY position ASC'
+  ),
+  getRotationState: db.prepare(
+    'SELECT last_position AS lastPosition FROM rotation_state WHERE type = ?'
+  ),
+  upsertRotationState: db.prepare(
+    'INSERT INTO rotation_state (type, last_position) VALUES (?, ?) ON CONFLICT(type) DO UPDATE SET last_position = excluded.last_position'
+  ),
+  getNextQuestion: db.prepare(
+    'SELECT question_id, type, text, position FROM questions WHERE type = ? AND position > ? ORDER BY position ASC LIMIT 1'
+  ),
+  getFirstQuestion: db.prepare(
+    'SELECT question_id, type, text, position FROM questions WHERE type = ? ORDER BY position ASC LIMIT 1'
+  ),
+} as const;
 
 interface AddQuestionParams {
   type: string;
@@ -108,7 +110,7 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
   }
 
   const insert = db.transaction(() => {
-    const maxPosition = (getMaxPositionStmt.get(questionType) as MaxPositionResult).maxPosition;
+    const maxPosition = (STATEMENTS.getMaxPosition.get(questionType) as MaxPositionResult).maxPosition;
     const position = maxPosition + 1;
 
     let questionId: string = '';
@@ -117,7 +119,7 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
     while (!inserted) {
       questionId = generateQuestionId();
       try {
-        insertQuestionStmt.run(
+        STATEMENTS.insertQuestion.run(
           questionId,
           questionType,
           sanitizedText,
@@ -132,7 +134,7 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
       }
     }
 
-    return getQuestionByIdStmt.get(questionId) as StoredQuestion;
+    return STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
   });
 
   return insert();
@@ -155,7 +157,7 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
     throw new Error('Question text cannot be empty.');
   }
 
-  const info = updateQuestionStmt.run(sanitizedText, questionId);
+  const info = STATEMENTS.updateQuestion.run(sanitizedText, questionId);
   return info.changes;
 };
 
@@ -166,7 +168,7 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
  * @returns Count of rows removed.
  */
 export const deleteQuestion = (questionId: string): number => {
-  const info = deleteQuestionStmt.run(questionId);
+  const info = STATEMENTS.deleteQuestion.run(questionId);
   return info.changes;
 };
 
@@ -177,7 +179,7 @@ export const deleteQuestion = (questionId: string): number => {
  * @returns Matching question, if present.
  */
 export const getQuestionById = (questionId: string): StoredQuestion | undefined => {
-  return getQuestionByIdStmt.get(questionId) as StoredQuestion | undefined;
+  return STATEMENTS.getQuestionById.get(questionId) as StoredQuestion | undefined;
 };
 
 /**
@@ -189,9 +191,9 @@ export const getQuestionById = (questionId: string): StoredQuestion | undefined 
 export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
   if (type) {
     const normalized = normalizeType(type);
-    return listQuestionsByTypeStmt.all(normalized) as StoredQuestion[];
+    return STATEMENTS.listQuestionsByType.all(normalized) as StoredQuestion[];
   }
-  return listQuestionsStmt.all() as StoredQuestion[];
+  return STATEMENTS.listQuestions.all() as StoredQuestion[];
 };
 
 /**
@@ -203,18 +205,18 @@ export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
 export const getNextQuestion = (type: QuestionType): QuestionForRotation | null => {
   const normalizedType = normalizeType(type);
   const fetch = db.transaction(() => {
-    const state = getRotationStateStmt.get(normalizedType) as RotationStateResult | undefined;
+    const state = STATEMENTS.getRotationState.get(normalizedType) as RotationStateResult | undefined;
     const lastPosition = state ? state.lastPosition : 0;
-    let nextQuestion = getNextQuestionStmt.get(normalizedType, lastPosition) as QuestionForRotation | undefined;
+    let nextQuestion = STATEMENTS.getNextQuestion.get(normalizedType, lastPosition) as QuestionForRotation | undefined;
 
     if (!nextQuestion) {
-      nextQuestion = getFirstQuestionStmt.get(normalizedType) as QuestionForRotation | undefined;
+      nextQuestion = STATEMENTS.getFirstQuestion.get(normalizedType) as QuestionForRotation | undefined;
       if (!nextQuestion) {
         return null;
       }
     }
 
-    upsertRotationStateStmt.run(normalizedType, nextQuestion.position);
+    STATEMENTS.upsertRotationState.run(normalizedType, nextQuestion.position);
     return nextQuestion;
   });
 

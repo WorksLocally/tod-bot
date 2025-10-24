@@ -21,6 +21,7 @@ interface Question {
 
 /**
  * Determines a human-friendly display name for a guild member or user.
+ * Prioritizes displayName/nickname, then globalName, username, and tag.
  *
  * @param entity - The requesting entity.
  * @returns Preferred display name or null when unavailable.
@@ -30,31 +31,25 @@ const resolveDisplayName = (entity: GuildMember | User | undefined): string | nu
     return null;
   }
 
-  if (typeof entity.displayName === 'string' && entity.displayName.trim().length) {
-    return entity.displayName;
+  // Check displayName first (works for both GuildMember and User)
+  const displayName = entity.displayName?.trim();
+  if (displayName) {
+    return displayName;
   }
 
-  if ('nickname' in entity && typeof entity.nickname === 'string' && entity.nickname.trim().length) {
-    return entity.nickname;
+  // For GuildMember, check nickname
+  if ('nickname' in entity && entity.nickname) {
+    const nickname = entity.nickname.trim();
+    if (nickname) {
+      return nickname;
+    }
   }
 
-  // Prefer displayName/nickname, then globalName/username/tag from either GuildMember or User.
-  // For GuildMember, user property may be more up-to-date; fallback order is intentional.
+  // Get user object for remaining checks
   const user = entity instanceof GuildMember ? entity.user : entity;
   
-  if (typeof user.globalName === 'string' && user.globalName.trim().length) {
-    return user.globalName;
-  }
-
-  if (typeof user.username === 'string' && user.username.trim().length) {
-    return user.username;
-  }
-
-  if (typeof user.tag === 'string' && user.tag.trim().length) {
-    return user.tag;
-  }
-
-  return null;
+  // Try globalName, username, then tag in order
+  return user.globalName?.trim() || user.username?.trim() || user.tag?.trim() || null;
 };
 
 interface BuildQuestionEmbedOptions {

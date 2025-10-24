@@ -222,16 +222,22 @@ export const updateSubmissionMessageStatus = async ({
       allowedMentions: { parse: [] },
     });
 
+    // Optimize reaction updates: only modify if needed
     const reactions = message.reactions.cache;
-    for (const reaction of reactions.values()) {
-      if (reaction.me && reaction.emoji.name !== metadata.emoji) {
-        // Remove previous bot reactions representing status.
-        await reaction.users.remove(client.user!.id);
-      }
-    }
+    const currentReaction = reactions.find((r) => r.me);
+    const targetEmoji = metadata.emoji;
 
-    if (!reactions.get(metadata.emoji)?.me) {
-      await message.react(metadata.emoji);
+    // Only update reactions if the current reaction differs from target
+    if (!currentReaction || currentReaction.emoji.name !== targetEmoji) {
+      // Remove old reactions in batch if possible
+      if (currentReaction) {
+        await currentReaction.users.remove(client.user!.id);
+      }
+      
+      // Add new reaction only if not already present
+      if (!reactions.get(targetEmoji)?.me) {
+        await message.react(targetEmoji);
+      }
     }
 
     logger.info('Updated submission status message', {
