@@ -89,7 +89,7 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
 };
 
 /**
- * Builds the action row containing Truth and Dare buttons.
+ * Builds the action row containing Truth, Dare, and Submit Question buttons.
  *
  * @returns Action row with interactive buttons.
  */
@@ -104,5 +104,10 @@ export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => 
     .setLabel('Dare')
     .setStyle(ButtonStyle.Danger);
 
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton)];
+  const submitButton = new ButtonBuilder()
+    .setCustomId('question_submit')
+    .setLabel('Submit Question')
+    .setStyle(ButtonStyle.Secondary);
+
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
 };
