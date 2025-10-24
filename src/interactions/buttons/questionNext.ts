@@ -4,7 +4,7 @@
  * @module src/interactions/buttons/questionNext
  */
 
-import { MessageFlags, ButtonInteraction } from 'discord.js';
+import { MessageFlags, ButtonInteraction, GuildMember } from 'discord.js';
 import { getNextQuestion } from '../../services/questionService.js';
 import type { QuestionType } from '../../services/questionService.js';
 import { buildQuestionEmbed, buildQuestionComponents } from '../../utils/questionEmbeds.js';
@@ -38,7 +38,7 @@ export const execute = async (interaction: ButtonInteraction): Promise<void> => 
 
   const embed = buildQuestionEmbed({
     question,
-    requestedBy: interaction.member ?? interaction.user,
+    requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
   });
 
   await interaction.update({

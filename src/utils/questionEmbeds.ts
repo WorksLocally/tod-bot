@@ -38,29 +38,19 @@ const resolveDisplayName = (entity: GuildMember | User | undefined): string | nu
     return entity.nickname;
   }
 
-  if (typeof entity.globalName === 'string' && entity.globalName.trim().length) {
-    return entity.globalName;
+  // Access properties that exist on User but not GuildMember
+  const user = entity instanceof GuildMember ? entity.user : entity;
+  
+  if (typeof user.globalName === 'string' && user.globalName.trim().length) {
+    return user.globalName;
   }
 
-  if (typeof entity.username === 'string' && entity.username.trim().length) {
-    return entity.username;
+  if (typeof user.username === 'string' && user.username.trim().length) {
+    return user.username;
   }
 
-  if ('user' in entity && entity.user) {
-    const user = entity.user;
-    if (typeof user.globalName === 'string' && user.globalName.trim().length) {
-      return user.globalName;
-    }
-    if (typeof user.username === 'string' && user.username.trim().length) {
-      return user.username;
-    }
-    if (typeof user.tag === 'string' && user.tag.trim().length) {
-      return user.tag;
-    }
-  }
-
-  if (typeof entity.tag === 'string' && entity.tag.trim().length) {
-    return entity.tag;
+  if (typeof user.tag === 'string' && user.tag.trim().length) {
+    return user.tag;
   }
 
   return null;

@@ -33,7 +33,7 @@ if (!fs.existsSync(databaseDir)) {
 /**
  * Singleton database connection leveraged by services for queries and transactions.
  */
-const db = new DatabaseConstructor(config.databasePath);
+const db: Database.Database = new DatabaseConstructor(config.databasePath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');

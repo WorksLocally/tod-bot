@@ -12,20 +12,11 @@ import { config as dotenvConfig } from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let dotenvxConfig: ((options: { path: string }) => void) | undefined;
-try {
-  const dotenvx = await import('dotenvx');
-  dotenvxConfig = dotenvx.config;
-} catch {
-  // dotenvx is optional at runtime; ignore if not installed yet.
-}
+// dotenvx is optional at runtime - we'll skip it for TypeScript build
 
 // Resolve .env path relative to project root (two directories up from this file)
 const projectRoot = path.resolve(__dirname, '..', '..');
 dotenvConfig({ path: path.join(projectRoot, '.env') });
-if (typeof dotenvxConfig === 'function') {
-  dotenvxConfig({ path: path.join(projectRoot, '.env') });
-}
 
 /**
  * Resolves a required environment variable or throws if it is undefined.

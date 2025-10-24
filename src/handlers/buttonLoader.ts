@@ -53,9 +53,9 @@ export const loadButtonHandlers = async (): Promise<Map<string | ((customId: str
   for (const file of buttonFiles) {
     const fileUrl = `file://${file}`;
     const handlerModule = await import(fileUrl) as { default?: ButtonHandler } & Partial<ButtonHandler>;
-    const handler = handlerModule.default ?? handlerModule;
+    const handler = handlerModule.default ?? handlerModule as ButtonHandler;
     
-    if (!handler) {
+    if (!handler || !handler.execute) {
       continue;
     }
 

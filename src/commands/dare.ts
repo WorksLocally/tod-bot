@@ -4,7 +4,7 @@
  * @module src/commands/dare
  */
 
-import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction, GuildMember } from 'discord.js';
 import { getNextQuestion } from '../services/questionService.js';
 import { buildQuestionEmbed, buildQuestionComponents } from '../utils/questionEmbeds.js';
 
@@ -30,7 +30,7 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
 
   const embed = buildQuestionEmbed({
     question,
-    requestedBy: interaction.member ?? interaction.user,
+    requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
   });
 
   await interaction.reply({
