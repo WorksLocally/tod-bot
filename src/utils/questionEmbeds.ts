@@ -4,20 +4,28 @@
  * @module src/utils/questionEmbeds
  */
 
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, User } from 'discord.js';
 
 const TYPE_LABELS = {
   truth: { label: 'Truth', color: 0x2ecc71 },
   dare: { label: 'Dare', color: 0xe67e22 },
-};
+} as const;
+
+type QuestionType = 'truth' | 'dare';
+
+interface Question {
+  question_id: string;
+  text: string;
+  type: QuestionType;
+}
 
 /**
  * Determines a human-friendly display name for a guild member or user.
  *
- * @param {import('discord.js').GuildMember | import('discord.js').User | undefined} entity - The requesting entity.
- * @returns {string | null} - Preferred display name or null when unavailable.
+ * @param entity - The requesting entity.
+ * @returns Preferred display name or null when unavailable.
  */
-const resolveDisplayName = (entity) => {
+const resolveDisplayName = (entity: GuildMember | User | undefined): string | null => {
   if (!entity) {
     return null;
   }
@@ -58,15 +66,18 @@ const resolveDisplayName = (entity) => {
   return null;
 };
 
+interface BuildQuestionEmbedOptions {
+  question: Question;
+  requestedBy?: GuildMember | User;
+}
+
 /**
  * Creates the embed describing the current question.
  *
- * @param {Object} options - Options used to build the embed.
- * @param {{ question_id: string, text: string, type: 'truth' | 'dare' }} options.question - Question data.
- * @param {import('discord.js').GuildMember | import('discord.js').User} [options.requestedBy] - Requesting user.
- * @returns {EmbedBuilder} - Configured embed instance.
+ * @param options - Options used to build the embed.
+ * @returns Configured embed instance.
  */
-const buildQuestionEmbed = ({ question, requestedBy }) => {
+export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbedOptions): EmbedBuilder => {
   const typeMeta = TYPE_LABELS[question.type] ?? TYPE_LABELS.truth;
 
   const embed = new EmbedBuilder()
@@ -94,9 +105,9 @@ const buildQuestionEmbed = ({ question, requestedBy }) => {
 /**
  * Builds the action row containing Truth and Dare buttons.
  *
- * @returns {ActionRowBuilder<ButtonBuilder>[]} - Action row with interactive buttons.
+ * @returns Action row with interactive buttons.
  */
-const buildQuestionComponents = () => {
+export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => {
   const truthButton = new ButtonBuilder()
     .setCustomId('question_truth_next')
     .setLabel('Truth')
@@ -107,10 +118,5 @@ const buildQuestionComponents = () => {
     .setLabel('Dare')
     .setStyle(ButtonStyle.Danger);
 
-  return [new ActionRowBuilder().addComponents(truthButton, dareButton)];
-};
-
-module.exports = {
-  buildQuestionEmbed,
-  buildQuestionComponents,
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton)];
 };

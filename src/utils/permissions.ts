@@ -4,16 +4,16 @@
  * @module src/utils/permissions
  */
 
-const { PermissionFlagsBits } = require('discord.js');
+import { PermissionFlagsBits, GuildMember } from 'discord.js';
 
 /**
  * Determines whether a guild member has one of the privileged roles or administrator rights.
  *
- * @param {import('discord.js').GuildMember | null} member - Member to inspect.
- * @param {string[]} allowedRoleIds - Collection of role IDs that grant access.
- * @returns {boolean} - True if the member may perform privileged actions.
+ * @param member - Member to inspect.
+ * @param allowedRoleIds - Collection of role IDs that grant access.
+ * @returns True if the member may perform privileged actions.
  */
-const hasPrivilegedRole = (member, allowedRoleIds = []) => {
+export const hasPrivilegedRole = (member: GuildMember | null, allowedRoleIds: string[] = []): boolean => {
   if (!member) {
     return false;
   }
@@ -28,8 +28,4 @@ const hasPrivilegedRole = (member, allowedRoleIds = []) => {
   }
 
   return member.roles.cache.some((role) => roleSet.has(role.id));
-};
-
-module.exports = {
-  hasPrivilegedRole,
 };
