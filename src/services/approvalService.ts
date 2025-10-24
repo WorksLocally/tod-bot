@@ -4,7 +4,7 @@
  * @module src/services/approvalService
  */
 
-import { EmbedBuilder, Client, User, Message, TextChannel } from 'discord.js';
+import { EmbedBuilder, Client, User, Message, TextChannel, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import * as submissionService from './submissionService.js';
 import type { SubmissionRecord, SubmissionStatus } from './submissionService.js';
 import logger from '../utils/logger.js';
@@ -82,6 +82,34 @@ const buildSubmissionEmbed = ({
   return embed;
 };
 
+/**
+ * Builds action row with approve and reject buttons for submission moderation.
+ *
+ * @param status - Current status of the submission.
+ * @returns Action row with buttons, or empty array if submission is not pending.
+ */
+const buildApprovalButtons = (status: SubmissionStatus): ActionRowBuilder<ButtonBuilder>[] => {
+  if (status !== 'pending') {
+    return [];
+  }
+
+  const approveButton = new ButtonBuilder()
+    .setCustomId('approval_approve')
+    .setLabel('Approve')
+    .setStyle(ButtonStyle.Success)
+    .setEmoji('✅');
+
+  const rejectButton = new ButtonBuilder()
+    .setCustomId('approval_reject')
+    .setLabel('Reject')
+    .setStyle(ButtonStyle.Danger)
+    .setEmoji('❌');
+
+  const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(approveButton, rejectButton);
+
+  return [actionRow];
+};
+
 interface PostSubmissionForApprovalParams {
   client: Client;
   config: BotConfig;
@@ -108,8 +136,10 @@ export const postSubmissionForApproval = async ({
     }
 
     const embed = buildSubmissionEmbed({ submission, statusOverride: 'pending', user });
+    const components = buildApprovalButtons('pending');
     const message = await (approvalChannel as TextChannel).send({
       embeds: [embed],
+      components,
       allowedMentions: { parse: [] },
     });
     await message.react(STATUS_META.pending.emoji);
@@ -200,8 +230,11 @@ export const updateSubmissionMessageStatus = async ({
       notes: sanitizedNotes,
     });
 
+    const components = buildApprovalButtons(status);
+
     await message.edit({
       embeds: [embed],
+      components,
       allowedMentions: { parse: [] },
     });
 
