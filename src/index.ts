@@ -128,6 +128,34 @@ const initializeClient = async (): Promise<void> => {
           });
         }
       }
+      return;
+    }
+
+    if (interaction.isModalSubmit()) {
+      // Handle modal submissions for rejection reason
+      if (interaction.customId.startsWith('approval_reject_modal:')) {
+        const submissionId = interaction.customId.split(':')[1];
+        
+        // Import the handler inline to avoid circular dependencies
+        const { handleRejectModalSubmit } = await import('./interactions/modals/approvalRejectModal.js');
+        
+        try {
+          await handleRejectModalSubmit(interaction, client, submissionId);
+        } catch (error) {
+          logger.error('Error handling rejection modal', { error, submissionId });
+          if (!interaction.deferred && !interaction.replied) {
+            await interaction.reply({
+              content: 'There was an error while processing your rejection.',
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+        }
+      } else {
+        await interaction.reply({
+          content: 'Unknown modal submission.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
     }
   });
 
