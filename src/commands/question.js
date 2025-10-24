@@ -1,3 +1,9 @@
+/**
+ * Slash command suite for managing truth and dare questions plus submission moderation.
+ *
+ * @module src/commands/question
+ */
+
 const { SlashCommandBuilder, EmbedBuilder, codeBlock } = require('discord.js');
 
 const questionService = require('../services/questionService');
@@ -8,6 +14,13 @@ const {
 } = require('../services/approvalService');
 const { hasPrivilegedRole } = require('../utils/permissions');
 
+/**
+ * Splits text lines into Discord-safe chunks while preserving line boundaries.
+ *
+ * @param {string[]} lines - Array of lines to chunk.
+ * @param {number} [chunkSize=1800] - Maximum chunk length.
+ * @returns {string[]} - Chunked blocks ready for display.
+ */
 const chunkLines = (lines, chunkSize = 1800) => {
   const chunks = [];
   let current = '';
@@ -37,6 +50,13 @@ const chunkLines = (lines, chunkSize = 1800) => {
   return chunks;
 };
 
+/**
+ * Verifies whether the invoking member has permission to run moderation commands.
+ *
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction - Command interaction context.
+ * @param {import('../config/env').BotConfig} config - Application configuration.
+ * @returns {Promise<boolean>} - Resolves true when the member is privileged; otherwise false.
+ */
 const ensurePrivileged = async (interaction, config) => {
   if (hasPrivilegedRole(interaction.member, config.privilegedRoleIds)) {
     return true;
@@ -49,6 +69,12 @@ const ensurePrivileged = async (interaction, config) => {
   return false;
 };
 
+/**
+ * Builds an embed representing the details of a stored question.
+ *
+ * @param {import('../services/questionService').StoredQuestion} question - Question to render.
+ * @returns {EmbedBuilder} - Configured embed.
+ */
 const buildQuestionDetailEmbed = (question) =>
   new EmbedBuilder()
     .setTitle(`${question.type === 'truth' ? 'Truth' : 'Dare'} Question`)
@@ -61,6 +87,7 @@ const buildQuestionDetailEmbed = (question) =>
     .setTimestamp(new Date(question.updated_at ?? question.created_at ?? Date.now()));
 
 module.exports = {
+  /** @type {SlashCommandBuilder} */
   data: new SlashCommandBuilder()
     .setName('question')
     .setDescription('Manage truth or dare questions.')
@@ -157,6 +184,14 @@ module.exports = {
             .setMaxLength(1000),
         ),
     ),
+  /**
+   * Handles all `/question` subcommands for moderators, including approvals and maintenance.
+   *
+   * @param {import('discord.js').ChatInputCommandInteraction} interaction - Interaction context.
+   * @param {import('discord.js').Client} client - Discord client used for messaging.
+   * @param {import('../config/env').BotConfig} config - Application configuration containing privileged roles.
+   * @returns {Promise<void>}
+   */
   async execute(interaction, client, config) {
     if (!(await ensurePrivileged(interaction, config))) {
       return;
@@ -205,11 +240,20 @@ module.exports = {
         return;
       }
 
-      const question = questionService.addQuestion({
-        type: questionType,
-        text: questionText,
-        createdBy: interaction.user.id,
-      });
+      let question;
+      try {
+        question = questionService.addQuestion({
+          type: questionType,
+          text: questionText,
+          createdBy: interaction.user.id,
+        });
+      } catch (error) {
+        await interaction.reply({
+          content: `Unable to add question: ${error.message}`,
+          ephemeral: true,
+        });
+        return;
+      }
 
       if (submission) {
         submissionService.updateSubmissionStatus({
@@ -275,13 +319,22 @@ module.exports = {
         return;
       }
 
-      questionService.editQuestion({ questionId, text: newText });
+      try {
+        questionService.editQuestion({ questionId, text: newText });
+      } catch (error) {
+        await interaction.reply({
+          content: `Unable to update question: ${error.message}`,
+          ephemeral: true,
+        });
+        return;
+      }
       const updated = questionService.getQuestionById(questionId);
 
       await interaction.reply({
         content: `Question \`${questionId}\` has been updated.`,
         embeds: [buildQuestionDetailEmbed(updated)],
         ephemeral: true,
+        allowedMentions: { parse: [] },
       });
       return;
     }
@@ -298,6 +351,12 @@ module.exports = {
         return;
       }
 
+      /**
+       * Shortens long question text for list display while retaining readability.
+       *
+       * @param {string} value - Text to truncate.
+       * @returns {string} - Possibly truncated text.
+       */
       const formatText = (value) => {
         if (value.length <= 140) {
           return value;
@@ -314,6 +373,7 @@ module.exports = {
       await interaction.reply({
         content: codeBlock(chunks[0]),
         ephemeral: true,
+        allowedMentions: { parse: [] },
       });
 
       for (const chunk of chunks.slice(1)) {
@@ -321,6 +381,7 @@ module.exports = {
         await interaction.followUp({
           content: codeBlock(chunk),
           ephemeral: true,
+          allowedMentions: { parse: [] },
         });
       }
       return;
@@ -341,6 +402,7 @@ module.exports = {
       await interaction.reply({
         embeds: [buildQuestionDetailEmbed(question)],
         ephemeral: true,
+        allowedMentions: { parse: [] },
       });
       return;
     }

@@ -1,10 +1,30 @@
+/**
+ * Discovers and aggregates button interaction handlers from the interactions directory.
+ *
+ * @module src/handlers/buttonLoader
+ */
+
 const fs = require('fs');
 const path = require('path');
 
+const logger = require('../utils/logger');
+
+/**
+ * Recursively reads button handler modules and indexes them by identifier.
+ *
+ * @returns {Map<string | Function, { execute: Function }>} - Map that associates button IDs or matchers with handlers.
+ */
 const loadButtonHandlers = () => {
   const buttonsPath = path.join(__dirname, '..', 'interactions', 'buttons');
+  /** @type {string[]} */
   const buttonFiles = [];
 
+  /**
+   * Recursively collects JavaScript files from the provided directory.
+   *
+   * @param {string} dir - Directory to scan for handlers.
+   * @returns {void}
+   */
   const walk = (dir) => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
@@ -36,8 +56,7 @@ const loadButtonHandlers = () => {
     } else if (typeof handler.match === 'function') {
       handlers.set(handler.match, handler);
     } else {
-      // eslint-disable-next-line no-console
-      console.warn(`Skipping button handler at ${file} - missing identifier`);
+      logger.warn('Skipping button handler missing identifier', { file });
     }
   }
 

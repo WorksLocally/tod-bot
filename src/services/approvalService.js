@@ -1,13 +1,38 @@
+/**
+ * Coordinates submission approval messaging, embed construction, and user notifications.
+ *
+ * @module src/services/approvalService
+ */
+
 const { EmbedBuilder } = require('discord.js');
 
 const submissionService = require('./submissionService');
+const logger = require('../utils/logger');
+const { sanitizeText } = require('../utils/sanitize');
 
+/**
+ * Maps moderation states to display metadata used across embeds and reactions.
+ *
+ * @type {Record<'pending' | 'approved' | 'rejected', { label: string, emoji: string, color: number }>}
+ */
 const STATUS_META = {
   pending: { label: 'Pending Review', emoji: '\u2753', color: 0x5865f2 },
   approved: { label: 'Approved', emoji: '\u2705', color: 0x2ecc71 },
   rejected: { label: 'Rejected', emoji: '\u274c', color: 0xe74c3c },
 };
 
+/**
+ * Builds an embed representing the current state of a submission.
+ *
+ * @param {Object} params - Embed construction options.
+ * @param {import('./submissionService').SubmissionRecord} params.submission - Submission to render.
+ * @param {'pending' | 'approved' | 'rejected'} [params.statusOverride] - Alternate status to display.
+ * @param {string} [params.approverId] - Moderator who processed the submission.
+ * @param {string} [params.questionId] - Question ID assigned after approval.
+ * @param {import('discord.js').User} [params.user] - User whose metadata should be shown as author.
+ * @param {string} [params.notes] - Optional moderation notes to include.
+ * @returns {EmbedBuilder} - Configured embed instance.
+ */
 const buildSubmissionEmbed = ({
   submission,
   statusOverride,
@@ -72,25 +97,61 @@ const buildSubmissionEmbed = ({
   return embed;
 };
 
+/**
+ * Sends a submission embed to the approval channel and records the resulting message reference.
+ *
+ * @param {{ client: import('discord.js').Client, config: import('../config/env').BotConfig, submission: import('./submissionService').SubmissionRecord, user: import('discord.js').User }} params -
+ *   Invocation parameters.
+ * @returns {Promise<import('discord.js').Message>} - The posted approval message.
+ */
 const postSubmissionForApproval = async ({ client, config, submission, user }) => {
-  const approvalChannel = await client.channels.fetch(config.approvalChannelId);
-  if (!approvalChannel) {
-    throw new Error('Approval channel not found.');
+  try {
+    const approvalChannel = await client.channels.fetch(config.approvalChannelId);
+    if (!approvalChannel) {
+      throw new Error('Approval channel not found.');
+    }
+
+    const embed = buildSubmissionEmbed({ submission, statusOverride: 'pending', user });
+    const message = await approvalChannel.send({
+      embeds: [embed],
+      allowedMentions: { parse: [] },
+    });
+    await message.react(STATUS_META.pending.emoji);
+
+    submissionService.setApprovalMessage({
+      submissionId: submission.submission_id,
+      messageId: message.id,
+      channelId: approvalChannel.id,
+    });
+
+    logger.info('Posted submission for approval', {
+      submissionId: submission.submission_id,
+      channelId: config.approvalChannelId,
+    });
+
+    return message;
+  } catch (error) {
+    logger.error('Failed to post submission for approval', {
+      error,
+      submissionId: submission.submission_id,
+      channelId: config.approvalChannelId,
+    });
+    throw error;
   }
-
-  const embed = buildSubmissionEmbed({ submission, statusOverride: 'pending', user });
-  const message = await approvalChannel.send({ embeds: [embed] });
-  await message.react(STATUS_META.pending.emoji);
-
-  submissionService.setApprovalMessage({
-    submissionId: submission.submission_id,
-    messageId: message.id,
-    channelId: approvalChannel.id,
-  });
-
-  return message;
 };
 
+/**
+ * Updates the approval message embed and reactions to reflect a new submission status.
+ *
+ * @param {Object} params - Options for updating the approval message.
+ * @param {import('discord.js').Client} params.client - Discord client used to fetch channels/messages.
+ * @param {import('./submissionService').SubmissionRecord} params.submission - Submission with stored metadata.
+ * @param {'pending' | 'approved' | 'rejected'} params.status - New moderation status.
+ * @param {string} [params.questionId] - Assigned question ID, when approved.
+ * @param {string} [params.approverId] - Moderator who processed the change.
+ * @param {string} [params.notes] - Optional moderation notes to append.
+ * @returns {Promise<import('discord.js').Message | null>} - Updated message or null when unavailable.
+ */
 const updateSubmissionMessageStatus = async ({
   client,
   submission,
@@ -108,38 +169,43 @@ const updateSubmissionMessageStatus = async ({
     return null;
   }
 
-  let channel;
   try {
-    channel = await client.channels.fetch(submission.approval_channel_id);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('Unable to fetch approval channel for submission', error);
-    return null;
-  }
-  if (!channel) {
-    return null;
-  }
+    const channel = await client.channels.fetch(submission.approval_channel_id);
+    if (!channel) {
+      logger.warn('Approval channel not found while updating submission status', {
+        submissionId: submission.submission_id,
+        channelId: submission.approval_channel_id,
+      });
+      return null;
+    }
 
-  let message;
-  try {
-    message = await channel.messages.fetch(submission.approval_message_id);
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('Unable to fetch approval message for submission', error);
-    return null;
-  }
+    const message = await channel.messages.fetch(submission.approval_message_id);
+    if (!message) {
+      logger.warn('Approval message not found while updating submission status', {
+        submissionId: submission.submission_id,
+        messageId: submission.approval_message_id,
+      });
+      return null;
+    }
 
-  const embed = buildSubmissionEmbed({
-    submission,
-    statusOverride: status,
-    approverId,
-    questionId,
-    notes,
-  });
+    const sanitizedNotes =
+      typeof notes === 'string' && notes.length
+        ? sanitizeText(notes, { maxLength: 1000 })
+        : undefined;
 
-  await message.edit({ embeds: [embed] });
+    const embed = buildSubmissionEmbed({
+      submission,
+      statusOverride: status,
+      approverId,
+      questionId,
+      notes: sanitizedNotes,
+    });
 
-  try {
+    await message.edit({
+      embeds: [embed],
+      allowedMentions: { parse: [] },
+    });
+
     const reactions = message.reactions.cache;
     for (const reaction of reactions.values()) {
       if (reaction.me && reaction.emoji.name !== metadata.emoji) {
@@ -152,14 +218,32 @@ const updateSubmissionMessageStatus = async ({
     if (!reactions.get(metadata.emoji)?.me) {
       await message.react(metadata.emoji);
     }
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn('Unable to update reactions on approval message', error);
-  }
 
-  return message;
+    logger.info('Updated submission status message', {
+      submissionId: submission.submission_id,
+      status,
+      messageId: message.id,
+    });
+
+    return message;
+  } catch (error) {
+    logger.error('Unable to update approval message for submission', {
+      error,
+      submissionId: submission.submission_id,
+      channelId: submission.approval_channel_id,
+      messageId: submission.approval_message_id,
+    });
+    return null;
+  }
 };
 
+/**
+ * Attempts to DM the original submitter with the outcome of their submission.
+ *
+ * @param {{ client: import('discord.js').Client, userId: string, status: 'pending' | 'approved' | 'rejected', questionId?: string, reason?: string }} params -
+ *   Notification data.
+ * @returns {Promise<void>}
+ */
 const notifySubmitter = async ({ client, userId, status, questionId, reason }) => {
   try {
     const user = await client.users.fetch(userId);
@@ -174,13 +258,20 @@ const notifySubmitter = async ({ client, userId, status, questionId, reason }) =
     }
 
     if (status === 'rejected' && reason) {
-      content += `\nReason: ${reason}`;
+      const sanitizedReason = sanitizeText(reason, { maxLength: 1000 });
+      if (sanitizedReason.length) {
+        content += `\nReason: ${sanitizedReason}`;
+      }
     }
 
     await user.send(content);
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.warn(`Unable to notify user ${userId} about submission status`, error);
+    logger.warn('Unable to notify user about submission status', {
+      error,
+      userId,
+      status,
+      questionId,
+    });
   }
 };
 
