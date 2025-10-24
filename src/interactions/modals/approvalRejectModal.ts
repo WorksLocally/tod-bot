@@ -21,7 +21,7 @@ export const handleRejectModalSubmit = async (
   client: Client,
   submissionId: string
 ): Promise<void> => {
-  const reason = interaction.fields.getTextInputValue('reason')?.trim() || undefined;
+  const reason = interaction.fields.getTextInputValue('reason').trim() || undefined;
 
   const submission = submissionService.getSubmissionById(submissionId);
 

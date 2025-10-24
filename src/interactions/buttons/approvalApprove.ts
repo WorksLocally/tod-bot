@@ -11,6 +11,7 @@ import { updateSubmissionMessageStatus, notifySubmitter } from '../../services/a
 import logger from '../../utils/logger.js';
 import type { BotConfig } from '../../config/env.js';
 import { hasPrivilegedRole } from '../../utils/permissions.js';
+import { validateSubmissionFromInteraction } from '../submissionValidation.js';
 
 export const customId = 'approval_approve';
 
@@ -36,41 +37,9 @@ export const execute = async (
     return;
   }
 
-  // Extract submission ID from the message embed
-  const embed = interaction.message.embeds[0];
-  if (!embed) {
-    await interaction.reply({
-      content: 'Unable to find submission information.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
-
-  const submissionIdField = embed.fields.find((f) => f.name === 'Submission ID');
-  if (!submissionIdField) {
-    await interaction.reply({
-      content: 'Unable to find submission ID.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
-
-  const submissionId = submissionIdField.value.trim().toUpperCase();
-  const submission = submissionService.getSubmissionById(submissionId);
-
-  if (!submission) {
-    await interaction.reply({
-      content: `Submission \`${submissionId}\` was not found.`,
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
-
-  if (submission.status !== 'pending') {
-    await interaction.reply({
-      content: `Submission \`${submissionId}\` has already been processed.`,
-      flags: MessageFlags.Ephemeral,
-    });
+  // Validate submission
+  const { submissionId, submission, error } = await validateSubmissionFromInteraction(interaction);
+  if (error || !submissionId || !submission) {
     return;
   }
 
