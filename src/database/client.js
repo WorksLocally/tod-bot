@@ -8,10 +8,22 @@
 const fs = require('fs');
 const path = require('path');
 
-const Database = require('better-sqlite3');
-
-const config = require('../config/env');
 const logger = require('../utils/logger');
+const config = require('../config/env');
+
+let Database;
+try {
+  Database = require('better-sqlite3');
+} catch (error) {
+  const bindingHelp = [
+    'better-sqlite3 failed to load its native bindings.',
+    'Install dependencies on this host using Node.js 20.x, 22.x, or 24.x (for example: `pnpm install --force`).',
+    'If compilation is required, ensure python3, make, and a C++ compiler toolchain are available.',
+  ].join(' ');
+
+  logger.error('Failed to initialize the SQLite database driver', { error });
+  throw new Error(`${bindingHelp} Original error: ${error.message}`, { cause: error });
+}
 
 const databaseDir = path.dirname(config.databasePath);
 if (!fs.existsSync(databaseDir)) {

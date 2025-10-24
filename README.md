@@ -4,7 +4,7 @@ Self-hosted Discord bot that delivers curated truth and dare questions with a su
 
 ## Requirements
 
-- Node.js 18.17 or later
+- Node.js 20.x, 22.x, or 24.x
 - pnpm 10.19.x (install with `corepack prepare pnpm@10.19.0 --activate` once Node is available)
 - A Discord application with bot token and slash command scopes
 
@@ -32,33 +32,33 @@ The database is created automatically on first run using SQLite3 via `better-sql
 
 ## Slash Commands
 
-- `/truth` – Serve the next truth question and reuse buttons for more.
-- `/dare` – Serve the next dare question.
-- `/submit` – Users submit questions for moderator approval. Posts to the configured channel with pending status.
+- `/truth` - Serve the next truth question and reuse buttons for more.
+- `/dare` - Serve the next dare question.
+- `/submit` - Users submit questions for moderator approval. Posts to the configured channel with pending status.
 
 ### Moderator Commands (`/question`)
 
-- `add` – Add a question directly or approve a submission (`submission-id` optional). Assigns an 8-character ID and updates approval status.
-- `delete` – Remove a question by ID.
-- `edit` – Update the text of a question.
-- `list` – Show all questions (optionally filtered by type).
-- `view` – Show question details by ID.
-- `reject` – Reject a pending submission, update the approval message, and DM the submitter.
+- `add` - Add a question directly or approve a submission (`submission-id` optional). Assigns an 8-character ID and updates approval status.
+- `delete` - Remove a question by ID.
+- `edit` - Update the text of a question.
+- `list` - Show all questions (optionally filtered by type).
+- `view` - Show question details by ID.
+- `reject` - Reject a pending submission, update the approval message, and DM the submitter.
 
 ## Approval Workflow
 
-1. `/submit` records the request and posts an embed with a ❔ reaction.
+1. `/submit` records the request and posts an embed with a check-mark reaction.
 2. Moderators run `/question add submission-id:XXXXXX` to approve, which:
-   - Assigns an ID, appends to the rotation list, updates the embed, swaps reaction to ✅, and DMs the submitter.
-3. `/question reject` swaps reaction to ❌ and DMs the submitter with the optional reason.
+   - Assigns an ID, appends to the rotation list, updates the embed, swaps the reaction to a check mark, and DMs the submitter.
+3. `/question reject` swaps the reaction to a cross mark and DMs the submitter with the optional reason.
 
 ## Project Structure
 
-- `src/index.js` – Discord client bootstrap.
-- `src/commands/` – Slash command handlers split by feature.
-- `src/services/` – Database operations, approval notifications, rotation logic.
-- `src/utils/` – ID generation, embeds, permission helpers.
-- `data/` – Default location for the SQLite database file.
+- `src/index.js` - Discord client bootstrap.
+- `src/commands/` - Slash command handlers split by feature.
+- `src/services/` - Database operations, approval notifications, rotation logic.
+- `src/utils/` - ID generation, embeds, permission helpers.
+- `data/` - Default location for the SQLite database file.
 
 ## Development Notes
 
