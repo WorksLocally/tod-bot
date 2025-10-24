@@ -29,7 +29,7 @@ export const loadCommandModules = async (): Promise<Map<string, CommandModule>> 
   const commandFiles: string[] = [];
 
   /**
-   * Descends into subdirectories collecting TypeScript command modules.
+   * Descends into subdirectories collecting compiled JavaScript command modules.
    *
    * @param dir - Directory to scan.
    */

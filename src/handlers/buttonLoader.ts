@@ -29,7 +29,7 @@ export const loadButtonHandlers = async (): Promise<Map<string | ((customId: str
   const buttonFiles: string[] = [];
 
   /**
-   * Recursively collects TypeScript files from the provided directory.
+   * Recursively collects compiled JavaScript files (from TypeScript sources) from the provided directory.
    *
    * @param dir - Directory to scan for handlers.
    */

@@ -213,7 +213,7 @@ export const execute = async (
   if (subcommand === 'add') {
     const submissionId = interaction.options.getString('submission-id');
 
-    if (submissionId) {
+    if (submissionId !== null) {
       const normalized = submissionId.trim().toUpperCase();
       const submission = submissionService.getSubmissionById(normalized);
 

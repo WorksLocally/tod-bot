@@ -12,7 +12,18 @@ import { config as dotenvConfig } from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// dotenvx is optional at runtime - we'll skip it for TypeScript build
+/**
+ * Note: dotenvx support was intentionally removed during the TypeScript migration.
+ * 
+ * The project previously attempted to use dotenvx for advanced environment variable
+ * management alongside dotenv. However, dotenvx does not have TypeScript type definitions
+ * and posed compatibility challenges with ES modules.
+ * 
+ * The bot now relies solely on dotenv, which provides sufficient functionality for
+ * loading environment variables from .env files. If you require advanced features
+ * previously provided by dotenvx (such as encryption or multi-environment support),
+ * you may need to implement them separately or use alternative solutions.
+ */
 
 // Resolve .env path relative to project root (two directories up from this file)
 const projectRoot = path.resolve(__dirname, '..', '..');

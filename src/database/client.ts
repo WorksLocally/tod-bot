@@ -11,20 +11,6 @@ import Database from 'better-sqlite3';
 import logger from '../utils/logger.js';
 import config from '../config/env.js';
 
-let DatabaseConstructor: typeof Database;
-try {
-  DatabaseConstructor = Database;
-} catch (error) {
-  const bindingHelp = [
-    'better-sqlite3 failed to load its native bindings.',
-    'Install dependencies on this host using Node.js 20.x, 22.x, or 24.x (for example: `pnpm install --force`).',
-    'If compilation is required, ensure python3, make, and a C++ compiler toolchain are available.',
-  ].join(' ');
-
-  logger.error('Failed to initialize the SQLite database driver', { error });
-  throw new Error(`${bindingHelp} Original error: ${(error as Error).message}`, { cause: error });
-}
-
 const databaseDir = path.dirname(config.databasePath);
 if (!fs.existsSync(databaseDir)) {
   fs.mkdirSync(databaseDir, { recursive: true });
@@ -33,7 +19,7 @@ if (!fs.existsSync(databaseDir)) {
 /**
  * Singleton database connection leveraged by services for queries and transactions.
  */
-const db: Database.Database = new DatabaseConstructor(config.databasePath);
+const db: Database.Database = new Database(config.databasePath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
