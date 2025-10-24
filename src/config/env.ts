@@ -5,12 +5,10 @@
  * @module src/config/env
  */
 
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { config as dotenvConfig } from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { fileURLToPath } from 'url';
 
 /**
  * Note: dotenvx support was intentionally removed during the TypeScript migration.
@@ -25,9 +23,20 @@ const __dirname = path.dirname(__filename);
  * you may need to implement them separately or use alternative solutions.
  */
 
-// Resolve .env path relative to project root (two directories up from this file)
-const projectRoot = path.resolve(__dirname, '..', '..');
-dotenvConfig({ path: path.join(projectRoot, '.env') });
+const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+const candidateEnvPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(moduleDir, '../../.env'),
+  path.resolve(moduleDir, '../../../.env'),
+];
+
+const envPath = candidateEnvPaths.find((candidate) => fs.existsSync(candidate));
+
+if (envPath) {
+  dotenvConfig({ path: envPath });
+} else {
+  dotenvConfig();
+}
 
 /**
  * Resolves a required environment variable or throws if it is undefined.
