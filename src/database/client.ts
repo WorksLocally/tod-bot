@@ -5,25 +5,11 @@
  * @module src/database/client
  */
 
-const fs = require('fs');
-const path = require('path');
-
-const logger = require('../utils/logger');
-const config = require('../config/env');
-
-let Database;
-try {
-  Database = require('better-sqlite3');
-} catch (error) {
-  const bindingHelp = [
-    'better-sqlite3 failed to load its native bindings.',
-    'Install dependencies on this host using Node.js 20.x, 22.x, or 24.x (for example: `pnpm install --force`).',
-    'If compilation is required, ensure python3, make, and a C++ compiler toolchain are available.',
-  ].join(' ');
-
-  logger.error('Failed to initialize the SQLite database driver', { error });
-  throw new Error(`${bindingHelp} Original error: ${error.message}`, { cause: error });
-}
+import fs from 'fs';
+import path from 'path';
+import Database from 'better-sqlite3';
+import logger from '../utils/logger.js';
+import config from '../config/env.js';
 
 const databaseDir = path.dirname(config.databasePath);
 if (!fs.existsSync(databaseDir)) {
@@ -32,10 +18,8 @@ if (!fs.existsSync(databaseDir)) {
 
 /**
  * Singleton database connection leveraged by services for queries and transactions.
- *
- * @type {Database}
  */
-const db = new Database(config.databasePath);
+const db: Database.Database = new Database(config.databasePath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -82,20 +66,29 @@ db.exec(`
     ON submissions (status);
 `);
 
+interface IndexInfo {
+  unique: number;
+  name: string;
+}
+
+interface ColumnInfo {
+  name: string;
+}
+
 /**
  * Detects whether the questions table still enforces a global UNIQUE constraint on position,
  * which would prevent dare and truth lists from maintaining independent orderings.
  *
- * @returns {boolean} - True when migration is required.
+ * @returns True when migration is required.
  */
-const needsPositionMigration = () => {
-  const indexes = db.prepare("PRAGMA index_list('questions')").all();
+const needsPositionMigration = (): boolean => {
+  const indexes = db.prepare("PRAGMA index_list('questions')").all() as IndexInfo[];
   return indexes.some((index) => {
     if (!index.unique) {
       return false;
     }
     const sanitizedName = index.name.replace(/'/g, "''");
-    const columns = db.prepare(`PRAGMA index_info('${sanitizedName}')`).all();
+    const columns = db.prepare(`PRAGMA index_info('${sanitizedName}')`).all() as ColumnInfo[];
     return columns.length === 1 && columns[0].name === 'position';
   });
 };
@@ -104,7 +97,7 @@ const needsPositionMigration = () => {
  * Rebuilds the questions table so that question positions are unique per type, preserving the
  * ordering of existing questions and updating rotation state accordingly.
  */
-const migrateQuestionPositions = () => {
+const migrateQuestionPositions = (): void => {
   const migrate = db.transaction(() => {
     db.exec(`
       ALTER TABLE questions RENAME TO questions_old;
@@ -187,4 +180,4 @@ if (needsPositionMigration()) {
   }
 }
 
-module.exports = db;
+export default db;

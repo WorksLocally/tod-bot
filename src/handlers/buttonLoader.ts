@@ -4,28 +4,36 @@
  * @module src/handlers/buttonLoader
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import logger from '../utils/logger.js';
 
-const logger = require('../utils/logger');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export interface ButtonHandler {
+  execute: (...args: unknown[]) => Promise<void>;
+  customId?: string;
+  customIds?: string[];
+  match?: (customId: string) => boolean;
+}
 
 /**
  * Recursively reads button handler modules and indexes them by identifier.
  *
- * @returns {Map<string | Function, { execute: Function }>} - Map that associates button IDs or matchers with handlers.
+ * @returns Map that associates button IDs or matchers with handlers.
  */
-const loadButtonHandlers = () => {
+export const loadButtonHandlers = async (): Promise<Map<string | ((customId: string) => boolean), ButtonHandler>> => {
   const buttonsPath = path.join(__dirname, '..', 'interactions', 'buttons');
-  /** @type {string[]} */
-  const buttonFiles = [];
+  const buttonFiles: string[] = [];
 
   /**
-   * Recursively collects JavaScript files from the provided directory.
+   * Recursively collects compiled JavaScript files (from TypeScript sources) from the provided directory.
    *
-   * @param {string} dir - Directory to scan for handlers.
-   * @returns {void}
+   * @param dir - Directory to scan for handlers.
    */
-  const walk = (dir) => {
+  const walk = (dir: string): void => {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const entryPath = path.join(dir, entry.name);
@@ -41,11 +49,13 @@ const loadButtonHandlers = () => {
     walk(buttonsPath);
   }
 
-  const handlers = new Map();
+  const handlers = new Map<string | ((customId: string) => boolean), ButtonHandler>();
   for (const file of buttonFiles) {
-     
-    const handler = require(file);
-    if (!handler) {
+    const fileUrl = `file://${file}`;
+    const handlerModule = await import(fileUrl) as { default?: ButtonHandler } & Partial<ButtonHandler>;
+    const handler = handlerModule.default ?? handlerModule as ButtonHandler;
+    
+    if (!handler || !handler.execute) {
       continue;
     }
 
@@ -61,8 +71,4 @@ const loadButtonHandlers = () => {
   }
 
   return handlers;
-};
-
-module.exports = {
-  loadButtonHandlers,
 };

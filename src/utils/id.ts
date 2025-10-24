@@ -10,10 +10,10 @@ const ALPHANUMERIC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 /**
  * Generates an uppercase alphanumeric identifier of the provided length.
  *
- * @param {number} length - Total number of characters to generate.
- * @returns {string} - Randomly generated identifier.
+ * @param length - Total number of characters to generate.
+ * @returns Randomly generated identifier.
  */
-const generateId = (length) => {
+const generateId = (length: number): string => {
   let result = '';
   for (let i = 0; i < length; i += 1) {
     const index = Math.floor(Math.random() * ALPHANUMERIC.length);
@@ -25,17 +25,13 @@ const generateId = (length) => {
 /**
  * Creates an ID for a stored question.
  *
- * @returns {string} - Eight-character question identifier.
+ * @returns Eight-character question identifier.
  */
-const generateQuestionId = () => generateId(8);
+export const generateQuestionId = (): string => generateId(8);
+
 /**
  * Creates an ID for an approval submission.
  *
- * @returns {string} - Six-character submission identifier.
+ * @returns Six-character submission identifier.
  */
-const generateSubmissionId = () => generateId(6);
-
-module.exports = {
-  generateQuestionId,
-  generateSubmissionId,
-};
+export const generateSubmissionId = (): string => generateId(6);

@@ -4,23 +4,27 @@
  * @module src/utils/logger
  */
 
-const path = require('path');
-const fs = require('fs');
+import path from 'path';
+import fs from 'fs';
+import { createLogger, format, transports } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
-const { createLogger, format, transports } = require('winston');
-const DailyRotateFile = require('winston-daily-rotate-file');
+interface ErrorWithCode extends Error {
+  code?: string;
+}
 
-const sanitizeMeta = (value, seen = new WeakSet()) => {
+const sanitizeMeta = (value: unknown, seen = new WeakSet<object>()): unknown => {
   if (value === null || typeof value !== 'object') {
     return value;
   }
 
   if (value instanceof Error) {
+    const error = value as ErrorWithCode;
     return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack,
-      ...(value.code ? { code: value.code } : {}),
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      ...(error.code ? { code: error.code } : {}),
     };
   }
 
@@ -52,7 +56,7 @@ const logger = createLogger({
       const { timestamp, level, message, stack, ...rest } = info;
       const sanitized = sanitizeMeta(rest);
       const restString =
-        sanitized && Object.keys(sanitized).length ? ` ${JSON.stringify(sanitized)}` : '';
+        sanitized && Object.keys(sanitized as Record<string, unknown>).length ? ` ${JSON.stringify(sanitized)}` : '';
       const base = `${timestamp} [${level.toUpperCase()}] ${message}${restString}`;
       if (stack && typeof stack === 'string') {
         return `${base}\n${stack}`;
@@ -77,4 +81,4 @@ const logger = createLogger({
   exitOnError: false,
 });
 
-module.exports = logger;
+export default logger;

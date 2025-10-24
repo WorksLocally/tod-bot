@@ -4,14 +4,18 @@
  * @module src/utils/sanitize
  */
 
+interface SanitizeOptions {
+  maxLength?: number;
+}
+
 /**
  * Removes control characters (excluding line feeds), normalises newlines, trims, and limits length.
  *
- * @param {string} input - Raw user input.
- * @param {{ maxLength?: number }} [options] - Optional configuration.
- * @returns {string} - Sanitised string.
+ * @param input - Raw user input.
+ * @param options - Optional configuration.
+ * @returns Sanitised string.
  */
-const sanitizeText = (input, options = {}) => {
+export const sanitizeText = (input: string, options: SanitizeOptions = {}): string => {
   const { maxLength } = options;
   if (typeof input !== 'string') {
     return '';
@@ -27,8 +31,4 @@ const sanitizeText = (input, options = {}) => {
   }
 
   return trimmed;
-};
-
-module.exports = {
-  sanitizeText,
 };

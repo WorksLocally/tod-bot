@@ -1,0 +1,35 @@
+/**
+ * CLI utility for registering slash commands with a guild during development.
+ *
+ * @module scripts/deploy-commands
+ */
+
+import { REST, Routes } from 'discord.js';
+import config from '../src/config/env.js';
+import { loadCommandModules } from '../src/handlers/commandLoader.js';
+
+/**
+ * Registers application commands for the configured guild.
+ */
+const register = async (): Promise<void> => {
+  try {
+    const commandModules = await loadCommandModules();
+    const commands = Array.from(commandModules.values()).map((command) =>
+      command.data.toJSON(),
+    );
+
+    const rest = new REST({ version: '10' }).setToken(config.token);
+
+    await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), {
+      body: commands,
+    });
+     
+    console.log(`Successfully registered ${commands.length} application commands.`);
+  } catch (error) {
+     
+    console.error('Failed to register application commands', error);
+    process.exitCode = 1;
+  }
+};
+
+register();

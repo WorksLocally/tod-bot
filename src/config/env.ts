@@ -5,31 +5,38 @@
  * @module src/config/env
  */
 
-const path = require('path');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { config as dotenvConfig } from 'dotenv';
 
-const { config: dotenvConfig } = require('dotenv');
-let dotenvxConfig;
-try {
-  ({ config: dotenvxConfig } = require('dotenvx'));
-} catch {
-  // dotenvx is optional at runtime; ignore if not installed yet.
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+/**
+ * Note: dotenvx support was intentionally removed during the TypeScript migration.
+ * 
+ * The project previously attempted to use dotenvx for advanced environment variable
+ * management alongside dotenv. However, dotenvx does not have TypeScript type definitions
+ * and posed compatibility challenges with ES modules.
+ * 
+ * The bot now relies solely on dotenv, which provides sufficient functionality for
+ * loading environment variables from .env files. If you require advanced features
+ * previously provided by dotenvx (such as encryption or multi-environment support),
+ * you may need to implement them separately or use alternative solutions.
+ */
 
 // Resolve .env path relative to project root (two directories up from this file)
 const projectRoot = path.resolve(__dirname, '..', '..');
 dotenvConfig({ path: path.join(projectRoot, '.env') });
-if (typeof dotenvxConfig === 'function') {
-  dotenvxConfig({ path: path.join(projectRoot, '.env') });
-}
 
 /**
  * Resolves a required environment variable or throws if it is undefined.
  *
- * @param {string} key - Environment variable name to resolve.
- * @returns {string} - The resolved environment variable value.
- * @throws {Error} If the environment variable is missing or empty.
+ * @param key - Environment variable name to resolve.
+ * @returns The resolved environment variable value.
+ * @throws If the environment variable is missing or empty.
  */
-const resolveRequired = (key) => {
+const resolveRequired = (key: string): string => {
   const value = process.env[key];
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -43,18 +50,17 @@ const QUESTION_MASTER_ROLE_ID = process.env.QUESTION_MASTER_ROLE_ID || '';
 
 /**
  * Runtime configuration for the bot sourced from environment variables.
- *
- * @typedef {Object} BotConfig
- * @property {string} token - Discord bot token used for authentication.
- * @property {string} clientId - Discord application client ID.
- * @property {string} guildId - Default guild ID used for command registration.
- * @property {string} approvalChannelId - Channel ID where submissions are reviewed.
- * @property {string} databasePath - Absolute path to the SQLite database file.
- * @property {string[]} privilegedRoleIds - Role IDs that may manage questions.
  */
+export interface BotConfig {
+  token: string;
+  clientId: string;
+  guildId: string;
+  approvalChannelId: string;
+  databasePath: string;
+  privilegedRoleIds: string[];
+}
 
-/** @type {BotConfig} */
-const config = {
+const config: BotConfig = {
   token: resolveRequired('DISCORD_TOKEN'),
   clientId: resolveRequired('CLIENT_ID'),
   guildId: resolveRequired('GUILD_ID'),
@@ -67,5 +73,4 @@ const config = {
   ),
 };
 
-/** @type {BotConfig} */
-module.exports = config;
+export default config;
