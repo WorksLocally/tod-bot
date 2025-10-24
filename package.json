@@ -10,6 +10,7 @@
     "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts",
     "deploy:commands": "tsx scripts/deploy-commands.ts",
+    "import:questions": "tsx scripts/import-questions.ts",
     "postinstall": "npm rebuild better-sqlite3",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
