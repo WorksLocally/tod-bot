@@ -41,7 +41,7 @@ export const execute = async (interaction: ButtonInteraction): Promise<void> => 
     requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
   });
 
-  await interaction.update({
+  await interaction.reply({
     embeds: [embed],
     components: buildQuestionComponents(),
     allowedMentions: { parse: [] },
