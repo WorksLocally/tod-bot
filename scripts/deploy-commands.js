@@ -30,10 +30,10 @@ const register = async () => {
     await rest.put(Routes.applicationGuildCommands(config.clientId, config.guildId), {
       body: commands,
     });
-    // eslint-disable-next-line no-console
+     
     console.log(`Successfully registered ${commands.length} application commands.`);
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error('Failed to register application commands', error);
     process.exitCode = 1;
   }

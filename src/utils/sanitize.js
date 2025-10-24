@@ -18,6 +18,7 @@ const sanitizeText = (input, options = {}) => {
   }
 
   const normalised = input.replace(/\r\n?/g, '\n');
+  // eslint-disable-next-line no-control-regex -- Intentionally removing control characters
   const withoutControl = normalised.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
   let trimmed = withoutControl.trim();
 

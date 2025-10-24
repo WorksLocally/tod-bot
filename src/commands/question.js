@@ -377,7 +377,7 @@ module.exports = {
       });
 
       for (const chunk of chunks.slice(1)) {
-        // eslint-disable-next-line no-await-in-loop
+         
         await interaction.followUp({
           content: codeBlock(chunk),
           flags: MessageFlags.Ephemeral,
