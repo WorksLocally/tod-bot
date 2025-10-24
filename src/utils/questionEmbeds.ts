@@ -89,7 +89,7 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
 };
 
 /**
- * Builds the action row containing Truth and Dare buttons.
+ * Builds the action row containing Truth, Dare, and Submit Question buttons.
  *
  * @returns Action row with interactive buttons.
  */
