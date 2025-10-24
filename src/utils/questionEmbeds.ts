@@ -104,5 +104,10 @@ export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => 
     .setLabel('Dare')
     .setStyle(ButtonStyle.Danger);
 
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton)];
+  const submitButton = new ButtonBuilder()
+    .setCustomId('question_submit')
+    .setLabel('Submit Question')
+    .setStyle(ButtonStyle.Secondary);
+
+  return [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
 };

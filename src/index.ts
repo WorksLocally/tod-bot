@@ -150,6 +150,21 @@ const initializeClient = async (): Promise<void> => {
             });
           }
         }
+      } else if (interaction.customId === 'question_submit_modal') {
+        // Handle question submission modal
+        const { handleQuestionSubmitModal } = await import('./interactions/modals/questionSubmitModal.js');
+        
+        try {
+          await handleQuestionSubmitModal(interaction, client, config);
+        } catch (error) {
+          logger.error('Error handling question submit modal', { error });
+          if (!interaction.deferred && !interaction.replied) {
+            await interaction.reply({
+              content: 'There was an error while processing your submission.',
+              flags: MessageFlags.Ephemeral,
+            });
+          }
+        }
       } else {
         await interaction.reply({
           content: 'Unknown modal submission.',
