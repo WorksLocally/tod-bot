@@ -38,7 +38,8 @@ const resolveDisplayName = (entity: GuildMember | User | undefined): string | nu
     return entity.nickname;
   }
 
-  // Access properties that exist on User but not GuildMember
+  // Prefer displayName/nickname, then globalName/username/tag from either GuildMember or User.
+  // For GuildMember, user property may be more up-to-date; fallback order is intentional.
   const user = entity instanceof GuildMember ? entity.user : entity;
   
   if (typeof user.globalName === 'string' && user.globalName.trim().length) {
