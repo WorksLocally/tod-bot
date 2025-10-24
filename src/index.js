@@ -5,7 +5,7 @@
  * @module src/index
  */
 
-const { Client, Collection, GatewayIntentBits, Partials, Events } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, Partials, Events, MessageFlags } = require('discord.js');
 
 const config = require('./config/env');
 const { loadCommandModules } = require('./handlers/commandLoader');
@@ -74,7 +74,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (!command) {
       await interaction.reply({
         content: 'Command not found. Please try again later.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -90,7 +90,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       } else {
         await interaction.reply({
           content: 'There was an error while executing this command.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }
@@ -114,7 +114,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (!handler) {
       await interaction.reply({
         content: 'Button is not active.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -126,7 +126,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.reply({
           content: 'There was an error while processing this interaction.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
       }
     }

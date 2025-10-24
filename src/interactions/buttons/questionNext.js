@@ -4,6 +4,8 @@
  * @module src/interactions/buttons/questionNext
  */
 
+const { MessageFlags } = require('discord.js');
+
 const questionService = require('../../services/questionService');
 const { buildQuestionEmbed, buildQuestionComponents } = require('../../utils/questionEmbeds');
 
@@ -33,7 +35,7 @@ module.exports = {
     if (!question) {
       await interaction.reply({
         content: `There are currently no ${questionType} questions available.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }

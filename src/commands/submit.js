@@ -4,7 +4,7 @@
  * @module src/commands/submit
  */
 
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 const submissionService = require('../services/submissionService');
 const { postSubmissionForApproval } = require('../services/approvalService');
@@ -49,7 +49,7 @@ module.exports = {
     if (!sanitized.length) {
       await interaction.reply({
         content: 'Please provide a valid question to submit.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -72,7 +72,7 @@ module.exports = {
       await interaction.reply({
         content:
           'We were unable to process your submission. Please try again later or contact a moderator.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -88,7 +88,7 @@ module.exports = {
       await interaction.reply({
         content:
           'Your question has been submitted for approval. You will be notified once it has been reviewed.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     } catch (error) {
       logger.error('Unable to post submission to approval channel', {
@@ -99,7 +99,7 @@ module.exports = {
       await interaction.reply({
         content:
           'Your submission was saved but we were unable to post it to the approval channel. Please alert a moderator.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },
