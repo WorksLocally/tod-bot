@@ -20,13 +20,14 @@ export interface CommandModule {
 }
 
 /**
- * Recursively loads every command module and returns a map keyed by command name.
+ * Loads command modules from the top level of the commands directory and returns a map keyed by command name.
+ * Subdirectories are not scanned to avoid loading helper modules.
  *
  * @returns Map of command names to their module exports.
  */
 export const loadCommandModules = async (): Promise<Map<string, CommandModule>> => {
   const commandsPath = path.join(__dirname, '..', 'commands');
-  const commandFiles = walkJsFiles(commandsPath);
+  const commandFiles = walkJsFiles(commandsPath, 0);
 
   const commands = new Map<string, CommandModule>();
   for (const file of commandFiles) {
