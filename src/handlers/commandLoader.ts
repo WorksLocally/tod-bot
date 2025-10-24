@@ -5,11 +5,11 @@
  * @module src/handlers/commandLoader
  */
 
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { SlashCommandBuilder } from 'discord.js';
 import logger from '../utils/logger.js';
+import { walkJsFiles } from '../utils/fileWalker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,28 +26,7 @@ export interface CommandModule {
  */
 export const loadCommandModules = async (): Promise<Map<string, CommandModule>> => {
   const commandsPath = path.join(__dirname, '..', 'commands');
-  const commandFiles: string[] = [];
-
-  /**
-   * Descends into subdirectories collecting compiled JavaScript command modules.
-   *
-   * @param dir - Directory to scan.
-   */
-  const walk = (dir: string): void => {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const entryPath = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        walk(entryPath);
-      } else if (entry.isFile() && entry.name.endsWith('.js')) {
-        commandFiles.push(entryPath);
-      }
-    }
-  };
-
-  if (fs.existsSync(commandsPath)) {
-    walk(commandsPath);
-  }
+  const commandFiles = walkJsFiles(commandsPath);
 
   const commands = new Map<string, CommandModule>();
   for (const file of commandFiles) {

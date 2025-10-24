@@ -96,11 +96,11 @@ const initializeClient = async (): Promise<void> => {
     }
 
     if (interaction.isButton()) {
-      // Attempt direct match before evaluating predicate-based handlers.
-      const directHandler = client.buttonHandlers.get(interaction.customId);
-      let handler = directHandler;
+      // Attempt direct match first (O(1) lookup), then evaluate predicate-based handlers
+      let handler = client.buttonHandlers.get(interaction.customId);
 
       if (!handler) {
+        // Only iterate through predicate handlers if direct match fails
         for (const [key, value] of client.buttonHandlers.entries()) {
           if (typeof key === 'function' && key(interaction.customId)) {
             handler = value;

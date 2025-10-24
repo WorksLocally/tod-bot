@@ -14,32 +14,47 @@ interface ErrorWithCode extends Error {
 }
 
 const sanitizeMeta = (value: unknown, seen = new WeakSet<object>()): unknown => {
-  if (value === null || typeof value !== 'object') {
+  // Fast path for primitives
+  if (value === null || value === undefined) {
     return value;
   }
 
+  const valueType = typeof value;
+  if (valueType !== 'object') {
+    return value;
+  }
+
+  // Handle Error objects
   if (value instanceof Error) {
     const error = value as ErrorWithCode;
-    return {
+    const result: Record<string, string | undefined> = {
       name: error.name,
       message: error.message,
       stack: error.stack,
-      ...(error.code ? { code: error.code } : {}),
     };
+    if (error.code) {
+      result.code = error.code;
+    }
+    return result;
   }
 
+  // Circular reference check
   if (seen.has(value)) {
     return '[Circular]';
   }
   seen.add(value);
 
+  // Handle arrays
   if (Array.isArray(value)) {
     return value.map((item) => sanitizeMeta(item, seen));
   }
 
-  return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [key, sanitizeMeta(item, seen)])
-  );
+  // Handle plain objects - optimize by avoiding Object.fromEntries overhead
+  const result: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    result[key] = sanitizeMeta(item, seen);
+  }
+  return result;
 };
 
 const logsDir = path.join(process.cwd(), 'logs');

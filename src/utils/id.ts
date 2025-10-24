@@ -5,10 +5,14 @@
  * @module src/utils/id
  */
 
+import { randomInt } from 'crypto';
+
 const ALPHANUMERIC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const ALPHANUMERIC_LENGTH = ALPHANUMERIC.length;
 
 /**
- * Generates an uppercase alphanumeric identifier of the provided length.
+ * Generates an uppercase alphanumeric identifier of the provided length using
+ * cryptographically secure random values.
  *
  * @param length - Total number of characters to generate.
  * @returns Randomly generated identifier.
@@ -16,8 +20,7 @@ const ALPHANUMERIC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const generateId = (length: number): string => {
   let result = '';
   for (let i = 0; i < length; i += 1) {
-    const index = Math.floor(Math.random() * ALPHANUMERIC.length);
-    result += ALPHANUMERIC[index];
+    result += ALPHANUMERIC[randomInt(ALPHANUMERIC_LENGTH)];
   }
   return result;
 };

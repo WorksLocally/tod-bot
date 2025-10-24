@@ -25,25 +25,28 @@ export interface SubmissionRecord {
   approval_channel_id: string | null;
 }
 
-const insertSubmissionStmt = db.prepare(
-  'INSERT INTO submissions (submission_id, type, text, user_id, guild_id, status, approval_channel_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-);
-const updateStatusStmt = db.prepare(
-  `UPDATE submissions
-     SET status = ?,
-         resolved_at = CASE WHEN ? IN ('approved', 'rejected') THEN datetime('now') ELSE resolved_at END,
-         resolver_id = CASE WHEN ? IN ('approved', 'rejected') THEN ? ELSE resolver_id END
-   WHERE submission_id = ?`
-);
-const setApprovalMessageStmt = db.prepare(
-  'UPDATE submissions SET approval_message_id = ?, approval_channel_id = ? WHERE submission_id = ?'
-);
-const getSubmissionByIdStmt = db.prepare(
-  'SELECT * FROM submissions WHERE submission_id = ?'
-);
-const listPendingSubmissionsStmt = db.prepare(
-  "SELECT * FROM submissions WHERE status = 'pending' ORDER BY created_at ASC"
-);
+// Prepared statements cached for performance
+const STATEMENTS = {
+  insertSubmission: db.prepare(
+    'INSERT INTO submissions (submission_id, type, text, user_id, guild_id, status, approval_channel_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ),
+  updateStatus: db.prepare(
+    `UPDATE submissions
+       SET status = ?,
+           resolved_at = CASE WHEN ? IN ('approved', 'rejected') THEN datetime('now') ELSE resolved_at END,
+           resolver_id = CASE WHEN ? IN ('approved', 'rejected') THEN ? ELSE resolver_id END
+     WHERE submission_id = ?`
+  ),
+  setApprovalMessage: db.prepare(
+    'UPDATE submissions SET approval_message_id = ?, approval_channel_id = ? WHERE submission_id = ?'
+  ),
+  getSubmissionById: db.prepare(
+    'SELECT * FROM submissions WHERE submission_id = ?'
+  ),
+  listPendingSubmissions: db.prepare(
+    "SELECT * FROM submissions WHERE status = 'pending' ORDER BY created_at ASC"
+  ),
+} as const;
 
 interface CreateSubmissionParams {
   type: QuestionType;
@@ -71,7 +74,7 @@ export const createSubmission = ({ type, text, userId, guildId, approvalChannelI
   while (!inserted) {
     submissionId = generateSubmissionId();
     try {
-      insertSubmissionStmt.run(
+      STATEMENTS.insertSubmission.run(
         submissionId,
         type,
         sanitizedText,
@@ -88,7 +91,7 @@ export const createSubmission = ({ type, text, userId, guildId, approvalChannelI
     }
   }
 
-  return getSubmissionByIdStmt.get(submissionId) as SubmissionRecord;
+  return STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord;
 };
 
 interface UpdateSubmissionStatusParams {
@@ -104,7 +107,7 @@ interface UpdateSubmissionStatusParams {
  * @returns Count of affected rows.
  */
 export const updateSubmissionStatus = ({ submissionId, status, resolverId }: UpdateSubmissionStatusParams): number => {
-  const info = updateStatusStmt.run(
+  const info = STATEMENTS.updateStatus.run(
     status,
     status,
     status,
@@ -127,7 +130,7 @@ interface SetApprovalMessageParams {
  * @returns Count of affected rows.
  */
 export const setApprovalMessage = ({ submissionId, messageId, channelId }: SetApprovalMessageParams): number => {
-  const info = setApprovalMessageStmt.run(messageId, channelId, submissionId);
+  const info = STATEMENTS.setApprovalMessage.run(messageId, channelId, submissionId);
   return info.changes;
 };
 
@@ -138,7 +141,7 @@ export const setApprovalMessage = ({ submissionId, messageId, channelId }: SetAp
  * @returns Found submission, if any.
  */
 export const getSubmissionById = (submissionId: string): SubmissionRecord | undefined => {
-  return getSubmissionByIdStmt.get(submissionId) as SubmissionRecord | undefined;
+  return STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord | undefined;
 };
 
 /**
@@ -147,5 +150,5 @@ export const getSubmissionById = (submissionId: string): SubmissionRecord | unde
  * @returns Pending submission records.
  */
 export const listPendingSubmissions = (): SubmissionRecord[] => {
-  return listPendingSubmissionsStmt.all() as SubmissionRecord[];
+  return STATEMENTS.listPendingSubmissions.all() as SubmissionRecord[];
 };

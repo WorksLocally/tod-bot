@@ -44,32 +44,33 @@ const buildSubmissionEmbed = ({
   notes,
 }: BuildSubmissionEmbedParams): EmbedBuilder => {
   const status = STATUS_META[statusOverride ?? submission.status] ?? STATUS_META.pending;
+  
+  // Pre-build all fields array for single addFields call (more efficient)
+  const fields = [
+    { name: 'Submission ID', value: submission.submission_id, inline: true },
+    { name: 'Type', value: submission.type, inline: true },
+    { name: 'Submitted By', value: `<@${submission.user_id}>`, inline: false },
+    { name: 'Status', value: status.label, inline: true },
+  ];
+
+  if (questionId) {
+    fields.push({ name: 'Question ID', value: questionId, inline: true });
+  }
+
+  if (approverId) {
+    fields.push({ name: 'Reviewed By', value: `<@${approverId}>`, inline: true });
+  }
+
+  if (notes) {
+    fields.push({ name: 'Notes', value: notes, inline: false });
+  }
+
   const embed = new EmbedBuilder()
     .setTitle('Question Submission')
     .setColor(submission.type === 'truth' ? 0x2ecc71 : 0xe67e22)
     .setDescription(submission.text)
-    .addFields(
-      { name: 'Submission ID', value: submission.submission_id, inline: true },
-      { name: 'Type', value: submission.type, inline: true },
-      {
-        name: 'Submitted By',
-        value: `<@${submission.user_id}>`,
-        inline: false,
-      },
-      {
-        name: 'Status',
-        value: status.label,
-        inline: true,
-      },
-    );
-
-  if (questionId) {
-    embed.addFields({
-      name: 'Question ID',
-      value: questionId,
-      inline: true,
-    });
-  }
+    .addFields(fields)
+    .setTimestamp(new Date());
 
   if (user) {
     embed.setAuthor({
@@ -77,24 +78,6 @@ const buildSubmissionEmbed = ({
       iconURL: user.displayAvatarURL?.() ?? undefined,
     });
   }
-
-  if (approverId) {
-    embed.addFields({
-      name: 'Reviewed By',
-      value: `<@${approverId}>`,
-      inline: true,
-    });
-  }
-
-  if (notes) {
-    embed.addFields({
-      name: 'Notes',
-      value: notes,
-      inline: false,
-    });
-  }
-
-  embed.setTimestamp(new Date());
 
   return embed;
 };
@@ -222,16 +205,22 @@ export const updateSubmissionMessageStatus = async ({
       allowedMentions: { parse: [] },
     });
 
+    // Optimize reaction updates: only modify if needed
     const reactions = message.reactions.cache;
-    for (const reaction of reactions.values()) {
-      if (reaction.me && reaction.emoji.name !== metadata.emoji) {
-        // Remove previous bot reactions representing status.
-        await reaction.users.remove(client.user!.id);
-      }
-    }
+    const currentReaction = reactions.find((r) => r.me);
+    const targetEmoji = metadata.emoji;
 
-    if (!reactions.get(metadata.emoji)?.me) {
-      await message.react(metadata.emoji);
+    // Only update reactions if the current reaction differs from target
+    if (!currentReaction || currentReaction.emoji.name !== targetEmoji) {
+      // Remove old reactions in batch if possible
+      if (currentReaction) {
+        await currentReaction.users.remove(client.user!.id);
+      }
+      
+      // Add new reaction only if not already present
+      if (!reactions.get(targetEmoji)?.me) {
+        await message.react(targetEmoji);
+      }
     }
 
     logger.info('Updated submission status message', {
