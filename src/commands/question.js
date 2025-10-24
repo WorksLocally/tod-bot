@@ -4,7 +4,7 @@
  * @module src/commands/question
  */
 
-const { SlashCommandBuilder, EmbedBuilder, codeBlock } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, codeBlock, MessageFlags } = require('discord.js');
 
 const questionService = require('../services/questionService');
 const submissionService = require('../services/submissionService');
@@ -64,7 +64,7 @@ const ensurePrivileged = async (interaction, config) => {
 
   await interaction.reply({
     content: 'You do not have permission to manage questions.',
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
   return false;
 };
@@ -214,7 +214,7 @@ module.exports = {
         if (!submission) {
           await interaction.reply({
             content: `Submission \`${submissionId}\` was not found.`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
           return;
         }
@@ -222,7 +222,7 @@ module.exports = {
         if (submission.status !== 'pending') {
           await interaction.reply({
             content: `Submission \`${submissionId}\` has already been processed.`,
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
           return;
         }
@@ -235,7 +235,7 @@ module.exports = {
         await interaction.reply({
           content:
             'Please provide a question type and text, or reference a pending submission.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -250,7 +250,7 @@ module.exports = {
       } catch (error) {
         await interaction.reply({
           content: `Unable to add question: ${error.message}`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -282,7 +282,7 @@ module.exports = {
 
       await interaction.reply({
         content: `Question added with ID \`${question.question_id}\` (${question.type}).`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -293,7 +293,7 @@ module.exports = {
       if (!question) {
         await interaction.reply({
           content: `Question \`${questionId}\` was not found.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -301,7 +301,7 @@ module.exports = {
       questionService.deleteQuestion(questionId);
       await interaction.reply({
         content: `Question \`${questionId}\` has been deleted.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -314,7 +314,7 @@ module.exports = {
       if (!question) {
         await interaction.reply({
           content: `Question \`${questionId}\` was not found.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -324,7 +324,7 @@ module.exports = {
       } catch (error) {
         await interaction.reply({
           content: `Unable to update question: ${error.message}`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -333,7 +333,7 @@ module.exports = {
       await interaction.reply({
         content: `Question \`${questionId}\` has been updated.`,
         embeds: [buildQuestionDetailEmbed(updated)],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });
       return;
@@ -346,7 +346,7 @@ module.exports = {
       if (!questions.length) {
         await interaction.reply({
           content: 'No questions found.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -372,7 +372,7 @@ module.exports = {
       const chunks = chunkLines(lines);
       await interaction.reply({
         content: codeBlock(chunks[0]),
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });
 
@@ -380,7 +380,7 @@ module.exports = {
         // eslint-disable-next-line no-await-in-loop
         await interaction.followUp({
           content: codeBlock(chunk),
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           allowedMentions: { parse: [] },
         });
       }
@@ -394,14 +394,14 @@ module.exports = {
       if (!question) {
         await interaction.reply({
           content: `Question \`${questionId}\` was not found.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
 
       await interaction.reply({
         embeds: [buildQuestionDetailEmbed(question)],
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });
       return;
@@ -415,7 +415,7 @@ module.exports = {
       if (!submission) {
         await interaction.reply({
           content: `Submission \`${submissionId}\` was not found.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -423,7 +423,7 @@ module.exports = {
       if (submission.status !== 'pending') {
         await interaction.reply({
           content: `Submission \`${submissionId}\` was already processed.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -453,7 +453,7 @@ module.exports = {
 
       await interaction.reply({
         content: `Submission \`${submissionId}\` was rejected.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   },
