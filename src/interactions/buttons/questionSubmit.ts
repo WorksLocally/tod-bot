@@ -24,8 +24,7 @@ export const execute = async (interaction: ButtonInteraction): Promise<void> => 
     .setStyle(TextInputStyle.Short)
     .setPlaceholder('truth or dare')
     .setRequired(true)
-    .setMaxLength(5)
-    .setMinLength(4);
+    .setMaxLength(5);
 
   const textInput = new TextInputBuilder()
     .setCustomId('text')

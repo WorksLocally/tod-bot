@@ -57,7 +57,7 @@ export const handleQuestionSubmitModal = async (
       approvalChannelId: config.approvalChannelId,
     });
   } catch (error) {
-    logger.error('Failed to store submission from button', {
+    logger.error('Failed to store submission from modal', {
       error,
       userId: interaction.user.id,
       type: questionType,
@@ -84,7 +84,7 @@ export const handleQuestionSubmitModal = async (
       flags: MessageFlags.Ephemeral,
     });
   } catch (error) {
-    logger.error('Unable to post submission to approval channel from button', {
+    logger.error('Unable to post submission to approval channel from modal', {
       error,
       submissionId: submission.submission_id,
       userId: interaction.user.id,
