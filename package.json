@@ -6,6 +6,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
+    "prestart": "npm run build",
     "start": "node dist/src/index.js",
     "dev": "tsx watch src/index.ts",
     "deploy:commands": "tsx scripts/deploy-commands.ts",
