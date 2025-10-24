@@ -11,7 +11,7 @@ const { config: dotenvConfig } = require('dotenv');
 let dotenvxConfig;
 try {
   ({ config: dotenvxConfig } = require('dotenvx'));
-} catch (error) {
+} catch {
   // dotenvx is optional at runtime; ignore if not installed yet.
 }
 

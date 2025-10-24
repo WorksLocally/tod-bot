@@ -210,7 +210,7 @@ const updateSubmissionMessageStatus = async ({
     for (const reaction of reactions.values()) {
       if (reaction.me && reaction.emoji.name !== metadata.emoji) {
         // Remove previous bot reactions representing status.
-        // eslint-disable-next-line no-await-in-loop
+         
         await reaction.users.remove(client.user.id);
       }
     }

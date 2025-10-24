@@ -44,6 +44,9 @@ build/Release
 node_modules/
 jspm_packages/
 
+# pnpm build approval file
+pnpm-workspace.yaml
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 

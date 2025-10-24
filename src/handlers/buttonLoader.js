@@ -43,7 +43,7 @@ const loadButtonHandlers = () => {
 
   const handlers = new Map();
   for (const file of buttonFiles) {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
+     
     const handler = require(file);
     if (!handler) {
       continue;

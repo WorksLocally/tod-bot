@@ -45,7 +45,7 @@ const loadCommandModules = () => {
 
   const commands = new Map();
   for (const file of commandFiles) {
-    // eslint-disable-next-line global-require, import/no-dynamic-require
+     
     const command = require(file);
     if (!command?.data || !command?.execute) {
       logger.warn('Skipping command module missing data or execute export', { file });
