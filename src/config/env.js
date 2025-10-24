@@ -15,9 +15,11 @@ try {
   // dotenvx is optional at runtime; ignore if not installed yet.
 }
 
-dotenvConfig();
+// Resolve .env path relative to project root (two directories up from this file)
+const projectRoot = path.resolve(__dirname, '..', '..');
+dotenvConfig({ path: path.join(projectRoot, '.env') });
 if (typeof dotenvxConfig === 'function') {
-  dotenvxConfig();
+  dotenvxConfig({ path: path.join(projectRoot, '.env') });
 }
 
 /**
