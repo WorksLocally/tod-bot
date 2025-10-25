@@ -3,7 +3,12 @@
  * This script imports questions from import-truth.json and import-dare.json
  * located in the project root directory.
  *
- * Usage: pnpm run import:questions
+ * Usage: npm run import:questions
+ *        or: npx tsx scripts/import-questions.ts
+ *
+ * Note: Do not run with 'node scripts/import-questions.ts' directly.
+ *       Either use 'npm run import:questions' or build first with 'npm run build'
+ *       and then run 'node dist/scripts/import-questions.js'
  */
 
 import path from 'path';
