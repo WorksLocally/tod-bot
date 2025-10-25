@@ -1,6 +1,14 @@
 /**
  * CLI utility for registering slash commands with a guild during development.
  *
+ * Usage: pnpm run deploy:commands (recommended)
+ *        or: pnpm exec tsx scripts/deploy-commands.ts (after pnpm install)
+ *
+ * Note: Do not run with 'node scripts/deploy-commands.ts' directly.
+ *       Node.js cannot execute TypeScript files without a transpiler.
+ *       Either use 'pnpm run deploy:commands' or build first with 'pnpm run build'
+ *       and then run 'node dist/scripts/deploy-commands.js'
+ *
  * @module scripts/deploy-commands
  */
 
