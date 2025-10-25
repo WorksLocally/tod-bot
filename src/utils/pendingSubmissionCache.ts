@@ -31,11 +31,21 @@ const pendingSubmissionCache = new LRUCache<string, PendingSubmission>(CACHE_CAP
  */
 const generatePendingId = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const bytes = crypto.randomBytes(8);
+  const charsLength = chars.length;
   let result = '';
   
+  // Generate 8 characters using rejection sampling to avoid modulo bias
   for (let i = 0; i < 8; i++) {
-    result += chars.charAt(bytes[i] % chars.length);
+    let randomIndex: number;
+    let randomValue: number;
+    
+    // Use rejection sampling to get unbiased random numbers
+    do {
+      randomValue = crypto.randomBytes(1)[0];
+    } while (randomValue >= 256 - (256 % charsLength)); // Reject values that would cause bias
+    
+    randomIndex = randomValue % charsLength;
+    result += chars.charAt(randomIndex);
   }
   
   return result;
