@@ -33,19 +33,23 @@ const generatePendingId = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const charsLength = chars.length;
   let result = '';
+  const maxRejectionAttempts = 100; // Safety limit for rejection sampling
   
   // Generate 8 characters using rejection sampling to avoid modulo bias
   for (let i = 0; i < 8; i++) {
-    let randomIndex: number;
     let randomValue: number;
+    let attempts = 0;
     
     // Use rejection sampling to get unbiased random numbers
     do {
+      if (attempts >= maxRejectionAttempts) {
+        throw new Error('Failed to generate unbiased random value after maximum attempts');
+      }
       randomValue = crypto.randomBytes(1)[0];
+      attempts++;
     } while (randomValue >= 256 - (256 % charsLength)); // Reject values that would cause bias
     
-    randomIndex = randomValue % charsLength;
-    result += chars.charAt(randomIndex);
+    result += chars.charAt(randomValue % charsLength);
   }
   
   return result;
