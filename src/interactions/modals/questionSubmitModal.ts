@@ -7,6 +7,9 @@
 import { MessageFlags, ModalSubmitInteraction, Client } from 'discord.js';
 import { createSubmission } from '../../services/submissionService.js';
 import { postSubmissionForApproval } from '../../services/approvalService.js';
+import { findSimilarQuestions } from '../../services/similarityService.js';
+import { storePendingSubmission } from '../../utils/pendingSubmissionCache.js';
+import { formatSimilarQuestions, buildSimilarityWarningEmbed, buildSimilarityWarningButtons } from '../../utils/similarityWarning.js';
 import logger from '../../utils/logger.js';
 import { sanitizeText } from '../../utils/sanitize.js';
 import type { BotConfig } from '../../config/env.js';
@@ -47,6 +50,38 @@ export const handleQuestionSubmitModal = async (
     return;
   }
 
+  // Check for similar questions before submission
+  const similarQuestions = findSimilarQuestions(
+    sanitized,
+    questionType,
+    0.7, // 70% similarity threshold
+    5    // Show top 5 matches
+  );
+
+  // If similar questions are found, show them to the user and ask for confirmation
+  if (similarQuestions.length > 0) {
+    const similarityText = formatSimilarQuestions(similarQuestions);
+    const embed = buildSimilarityWarningEmbed(similarityText, sanitized);
+
+    // Store the pending submission data
+    const pendingId = storePendingSubmission({
+      type: questionType,
+      text: sanitized,
+      userId: interaction.user.id,
+      guildId: interaction.guildId ?? undefined,
+    });
+
+    const actionRow = buildSimilarityWarningButtons(pendingId);
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [actionRow],
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  // No similar questions found, proceed with submission directly
   let submission;
   try {
     submission = createSubmission({
