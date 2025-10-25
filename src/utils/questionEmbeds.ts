@@ -117,7 +117,7 @@ export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => 
   const submitButton = new ButtonBuilder()
     .setCustomId('question_submit')
     .setLabel('Submit Question')
-    .setStyle(ButtonStyle.Secondary);
+    .setStyle(ButtonStyle.Success);
 
   cachedQuestionComponents = [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
   

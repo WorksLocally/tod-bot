@@ -44,12 +44,6 @@ export const data = new SlashCommandBuilder()
           .setDescription('Question text.')
           .setRequired(false)
           .setMaxLength(4000),
-      )
-      .addStringOption((option) =>
-        option
-          .setName('submission-id')
-          .setDescription('Approve a pending submission by ID.')
-          .setRequired(false),
       ),
   )
   .addSubcommand((subcommand) =>
@@ -138,7 +132,7 @@ export const execute = async (
 
   switch (subcommand) {
     case 'add':
-      await executeAdd(interaction, client);
+      await executeAdd(interaction);
       break;
     case 'delete':
       await executeDelete(interaction);
