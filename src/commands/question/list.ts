@@ -41,9 +41,12 @@ export const executeList = async (
     return `${value.slice(0, 137)}...`;
   };
 
-  const lines = questions.map(
-    (q) =>
-      `[${q.type.toUpperCase()}] ${q.question_id} (pos ${q.position}) - ${formatText(q.text)}`,
+  const lines = questions.flatMap(
+    (q) => [
+      `[${q.type.toUpperCase()}] ${formatText(q.text)}`,
+      `ID: ${q.question_id} | Position: ${q.position}`,
+      '', // Empty line for spacing
+    ]
   );
 
   const chunks = chunkLines(lines);
