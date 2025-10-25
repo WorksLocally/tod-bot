@@ -16,6 +16,11 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
 /**
+ * Maximum length for error message previews in console output.
+ */
+const MAX_ERROR_PREVIEW_LENGTH = 60;
+
+/**
  * Main import function that processes both truth and dare JSON files.
  */
 const runImport = (): void => {
@@ -53,8 +58,8 @@ const runImport = (): void => {
           if (err.index >= 0) {
             console.log(`   - Index ${err.index}: ${err.error}`);
             if (err.question) {
-              const preview = err.question.length > 60 
-                ? `${err.question.substring(0, 60)}...` 
+              const preview = err.question.length > MAX_ERROR_PREVIEW_LENGTH 
+                ? `${err.question.substring(0, MAX_ERROR_PREVIEW_LENGTH)}...` 
                 : err.question;
               console.log(`     Question: ${preview}`);
             }

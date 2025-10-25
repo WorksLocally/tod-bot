@@ -80,7 +80,7 @@ export const importQuestionsFromFile = (filePath: string): ImportResult => {
       try {
         // Import the question using the existing service
         const imported = questionService.addQuestion({
-          type: item.type,
+          type: item.type.toLowerCase(),
           text: item.question,
           createdBy: 'IMPORT',
         });
