@@ -70,7 +70,7 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
   const typeMeta = TYPE_LABELS[question.type] ?? TYPE_LABELS.truth;
 
   const embed = new EmbedBuilder()
-    .setTitle(`${typeMeta.label} Question`)
+    .setTitle(typeMeta.label)
     .setDescription(question.text)
     .setColor(typeMeta.color)
     .setFooter({
