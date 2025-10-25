@@ -13,6 +13,11 @@ import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
 
 /**
+ * Maximum length for preview text in similarity match display.
+ */
+const SIMILARITY_PREVIEW_LENGTH = 100;
+
+/**
  * Maps moderation states to display metadata used across embeds and reactions.
  */
 const STATUS_META: Record<SubmissionStatus, { label: string; emoji: string; color: number }> = {
@@ -73,7 +78,7 @@ const buildSubmissionEmbed = ({
     const similarityText = similarQuestions
       .map((match) => {
         const percentage = Math.round(match.similarityScore * 100);
-        return `\`${match.questionId}\` (${percentage}%): ${match.text.substring(0, 100)}${match.text.length > 100 ? '...' : ''}`;
+        return `\`${match.questionId}\` (${percentage}%): ${match.text.substring(0, SIMILARITY_PREVIEW_LENGTH)}${match.text.length > SIMILARITY_PREVIEW_LENGTH ? '...' : ''}`;
       })
       .join('\n');
     

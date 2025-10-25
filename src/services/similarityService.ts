@@ -63,6 +63,11 @@ const calculateSimilarity = (str1: string, str2: string): number => {
 /**
  * Finds questions similar to the provided text.
  *
+ * Note: This function loads all questions of a given type into memory for comparison.
+ * For typical Discord bot usage with a few hundred questions per type, this is efficient.
+ * If the question database grows significantly (>1000 questions per type), consider
+ * implementing caching or using a more scalable similarity search solution.
+ *
  * @param text - Question text to search for similarities.
  * @param type - Question type to filter by.
  * @param threshold - Minimum similarity score (0-1) to include in results. Default is 0.7 (70%).
