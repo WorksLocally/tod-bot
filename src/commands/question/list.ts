@@ -7,7 +7,7 @@
 import { MessageFlags, ChatInputCommandInteraction, codeBlock } from 'discord.js';
 import * as questionService from '../../services/questionService.js';
 import type { QuestionType } from '../../services/questionService.js';
-import { chunkLines } from './shared.js';
+import { chunkLines, formatQuestionText } from './shared.js';
 import { buildPaginationComponents } from '../../utils/paginationComponents.js';
 
 /**
@@ -29,22 +29,9 @@ export const executeList = async (
     return;
   }
 
-  /**
-   * Shortens long question text for list display while retaining readability.
-   *
-   * @param value - Text to truncate.
-   * @returns Possibly truncated text.
-   */
-  const formatText = (value: string): string => {
-    if (value.length <= 140) {
-      return value;
-    }
-    return `${value.slice(0, 137)}...`;
-  };
-
   const lines: string[] = [];
   questions.forEach((q, idx) => {
-    lines.push(`[${q.type.toUpperCase()}] ${formatText(q.text)}`);
+    lines.push(`[${q.type.toUpperCase()}] ${formatQuestionText(q.text)}`);
     lines.push(`ID: ${q.question_id} | Position: ${q.position}`);
     if (idx < questions.length - 1) {
       lines.push(''); // Empty line for spacing between questions
