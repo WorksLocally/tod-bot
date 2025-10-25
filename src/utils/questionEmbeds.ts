@@ -19,6 +19,9 @@ interface Question {
   type: QuestionType;
 }
 
+// Cache the question component buttons - they never change
+let cachedQuestionComponents: ActionRowBuilder<ButtonBuilder>[] | null = null;
+
 /**
  * Determines a human-friendly display name for a guild member or user.
  * Prioritizes displayName/nickname, then globalName, username, and tag.
@@ -90,10 +93,17 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
 
 /**
  * Builds the action row containing Truth, Dare, and Submit Question buttons.
+ * Components are cached after first creation for performance.
  *
  * @returns Action row with interactive buttons.
  */
 export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => {
+  // Return cached components if available
+  if (cachedQuestionComponents) {
+    return cachedQuestionComponents;
+  }
+
+  // Build components only once
   const truthButton = new ButtonBuilder()
     .setCustomId('question_truth_next')
     .setLabel('Truth')
@@ -109,5 +119,7 @@ export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => 
     .setLabel('Submit Question')
     .setStyle(ButtonStyle.Secondary);
 
-  return [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
+  cachedQuestionComponents = [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
+  
+  return cachedQuestionComponents;
 };

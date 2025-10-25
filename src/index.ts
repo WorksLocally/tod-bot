@@ -12,6 +12,8 @@ import type { CommandModule } from './handlers/commandLoader.js';
 import { loadButtonHandlers } from './handlers/buttonLoader.js';
 import type { ButtonHandler } from './handlers/buttonLoader.js';
 import logger from './utils/logger.js';
+import { handleRejectModalSubmit } from './interactions/modals/approvalRejectModal.js';
+import { handleQuestionSubmitModal } from './interactions/modals/questionSubmitModal.js';
 
 // Extend the Client type to include our custom properties
 declare module 'discord.js' {
@@ -136,9 +138,6 @@ const initializeClient = async (): Promise<void> => {
       if (interaction.customId.startsWith('approval_reject_modal:')) {
         const submissionId = interaction.customId.split(':')[1];
         
-        // Import the handler inline to avoid circular dependencies
-        const { handleRejectModalSubmit } = await import('./interactions/modals/approvalRejectModal.js');
-        
         try {
           await handleRejectModalSubmit(interaction, client, submissionId);
         } catch (error) {
@@ -152,8 +151,6 @@ const initializeClient = async (): Promise<void> => {
         }
       } else if (interaction.customId === 'question_submit_modal') {
         // Handle question submission modal
-        const { handleQuestionSubmitModal } = await import('./interactions/modals/questionSubmitModal.js');
-        
         try {
           await handleQuestionSubmitModal(interaction, client, config);
         } catch (error) {
