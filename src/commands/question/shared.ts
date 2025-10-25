@@ -49,6 +49,19 @@ export const buildQuestionDetailEmbed = (question: StoredQuestion): EmbedBuilder
     .setTimestamp(new Date(question.updated_at ?? question.created_at ?? Date.now()));
 
 /**
+ * Shortens long question text for list display while retaining readability.
+ *
+ * @param value - Text to truncate.
+ * @returns Possibly truncated text.
+ */
+export const formatQuestionText = (value: string): string => {
+  if (value.length <= 140) {
+    return value;
+  }
+  return `${value.slice(0, 137)}...`;
+};
+
+/**
  * Splits text lines into Discord-safe chunks while preserving line boundaries.
  *
  * @param lines - Array of lines to chunk.
