@@ -7,6 +7,7 @@
 
 import crypto from 'crypto';
 import { LRUCache } from './lruCache.js';
+import logger from './logger.js';
 import type { QuestionType } from '../services/questionService.js';
 
 export interface PendingSubmission {
@@ -21,6 +22,7 @@ export interface PendingSubmission {
 const CACHE_CAPACITY = 100;
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_RETRY_ATTEMPTS = 10; // Maximum attempts to generate a unique ID
+const BYTE_MAX_VALUE = 256; // Maximum value of a single byte
 
 const pendingSubmissionCache = new LRUCache<string, PendingSubmission>(CACHE_CAPACITY);
 
@@ -47,7 +49,7 @@ const generatePendingId = (): string => {
       }
       randomValue = crypto.randomBytes(1)[0];
       attempts++;
-    } while (randomValue >= 256 - (256 % charsLength)); // Reject values that would cause bias
+    } while (randomValue >= BYTE_MAX_VALUE - (BYTE_MAX_VALUE % charsLength)); // Reject values that would cause bias
     
     result += chars.charAt(randomValue % charsLength);
   }
@@ -69,12 +71,25 @@ export const storePendingSubmission = (submission: Omit<PendingSubmission, 'time
   // Generate a unique ID with retry limit
   do {
     if (attempts >= MAX_RETRY_ATTEMPTS) {
+      logger.error('Failed to generate unique pending submission ID after maximum attempts', {
+        attempts,
+        cacheSize: pendingSubmissionCache.size,
+      });
       throw new Error('Failed to generate unique pending submission ID after maximum attempts');
     }
     
     pendingId = generatePendingId();
     attempts++;
   } while (pendingSubmissionCache.get(pendingId) !== undefined);
+  
+  // Log collision metrics if multiple attempts were needed
+  if (attempts > 1) {
+    logger.warn('Pending submission ID collision detected', {
+      attempts,
+      cacheSize: pendingSubmissionCache.size,
+      pendingId,
+    });
+  }
   
   const data: PendingSubmission = {
     ...submission,

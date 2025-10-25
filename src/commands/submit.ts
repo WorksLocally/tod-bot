@@ -4,11 +4,12 @@
  * @module src/commands/submit
  */
 
-import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction, Client, EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction, Client } from 'discord.js';
 import { createSubmission } from '../services/submissionService.js';
 import { postSubmissionForApproval } from '../services/approvalService.js';
 import { findSimilarQuestions } from '../services/similarityService.js';
 import { storePendingSubmission } from '../utils/pendingSubmissionCache.js';
+import { formatSimilarQuestions, buildSimilarityWarningEmbed, buildSimilarityWarningButtons } from '../utils/similarityWarning.js';
 import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
@@ -34,11 +35,6 @@ export const data = new SlashCommandBuilder()
       .setRequired(true)
       .setMaxLength(4000),
   );
-
-/**
- * Maximum length for preview text in similarity match display.
- */
-const SIMILARITY_PREVIEW_LENGTH = 150;
 
 /**
  * Processes `/submit` requests by storing the question and notifying moderators.
@@ -74,30 +70,8 @@ export const execute = async (
 
   // If similar questions are found, show them to the user and ask for confirmation
   if (similarQuestions.length > 0) {
-    const similarityText = similarQuestions
-      .map((match) => {
-        const percentage = Math.round(match.similarityScore * 100);
-        const preview = match.text.length > SIMILARITY_PREVIEW_LENGTH
-          ? `${match.text.substring(0, SIMILARITY_PREVIEW_LENGTH)}...`
-          : match.text;
-        return `**${match.questionId}** (${percentage}% similar):\n> ${preview}`;
-      })
-      .join('\n\n');
-
-    const embed = new EmbedBuilder()
-      .setTitle('⚠️ Similar Questions Found')
-      .setDescription(
-        'We found existing questions similar to yours:\n\n' +
-        similarityText +
-        '\n\n**Do you still want to submit your question?**'
-      )
-      .setColor(0xffa500) // Orange color for warning
-      .addFields({
-        name: 'Your Question',
-        value: sanitized.length > 200 ? `${sanitized.substring(0, 200)}...` : sanitized,
-        inline: false,
-      })
-      .setFooter({ text: 'Similar questions help avoid duplicates in our database.' });
+    const similarityText = formatSimilarQuestions(similarQuestions);
+    const embed = buildSimilarityWarningEmbed(similarityText, sanitized);
 
     // Store the pending submission data
     const pendingId = storePendingSubmission({
@@ -107,19 +81,7 @@ export const execute = async (
       guildId: interaction.guildId ?? undefined,
     });
 
-    const submitButton = new ButtonBuilder()
-      .setCustomId(`submit_confirm:${pendingId}`)
-      .setLabel('Submit Anyway')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('✅');
-
-    const cancelButton = new ButtonBuilder()
-      .setCustomId('submit_cancel')
-      .setLabel('Cancel')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('❌');
-
-    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(submitButton, cancelButton);
+    const actionRow = buildSimilarityWarningButtons(pendingId);
 
     await interaction.reply({
       embeds: [embed],

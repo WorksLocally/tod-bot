@@ -42,6 +42,17 @@ export const execute = async (
   }
 
   const pendingId = parts[1];
+  
+  // Validate pendingId: must be exactly 8 alphanumeric characters
+  if (!/^[A-Z0-9]{8}$/.test(pendingId)) {
+    await interaction.update({
+      content: 'Invalid submission data. Please try submitting again using the `/submit` command.',
+      embeds: [],
+      components: [],
+    });
+    return;
+  }
+  
   const pendingData = retrievePendingSubmission(pendingId);
   
   if (!pendingData) {
