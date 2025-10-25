@@ -7,9 +7,15 @@
 import { EmbedBuilder, Client, User, Message, TextChannel, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
 import * as submissionService from './submissionService.js';
 import type { SubmissionRecord, SubmissionStatus } from './submissionService.js';
+import { findSimilarQuestions, type SimilarityMatch } from './similarityService.js';
 import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
+
+/**
+ * Maximum length for preview text in similarity match display.
+ */
+const SIMILARITY_PREVIEW_LENGTH = 100;
 
 /**
  * Maps moderation states to display metadata used across embeds and reactions.
@@ -27,6 +33,7 @@ interface BuildSubmissionEmbedParams {
   questionId?: string;
   user?: User;
   notes?: string;
+  similarQuestions?: SimilarityMatch[];
 }
 
 /**
@@ -42,6 +49,7 @@ const buildSubmissionEmbed = ({
   questionId,
   user,
   notes,
+  similarQuestions,
 }: BuildSubmissionEmbedParams): EmbedBuilder => {
   const status = STATUS_META[statusOverride ?? submission.status] ?? STATUS_META.pending;
   
@@ -63,6 +71,22 @@ const buildSubmissionEmbed = ({
 
   if (notes) {
     fields.push({ name: 'Notes', value: notes, inline: false });
+  }
+
+  // Add similar questions if found
+  if (similarQuestions && similarQuestions.length > 0) {
+    const similarityText = similarQuestions
+      .map((match) => {
+        const percentage = Math.round(match.similarityScore * 100);
+        return `\`${match.questionId}\` (${percentage}%): ${match.text.substring(0, SIMILARITY_PREVIEW_LENGTH)}${match.text.length > SIMILARITY_PREVIEW_LENGTH ? '...' : ''}`;
+      })
+      .join('\n');
+    
+    fields.push({ 
+      name: '⚠️ Similar Questions Found', 
+      value: similarityText, 
+      inline: false 
+    });
   }
 
   const embed = new EmbedBuilder()
@@ -135,7 +159,20 @@ export const postSubmissionForApproval = async ({
       throw new Error('Approval channel not found.');
     }
 
-    const embed = buildSubmissionEmbed({ submission, statusOverride: 'pending', user });
+    // Check for similar questions
+    const similarQuestions = findSimilarQuestions(
+      submission.text,
+      submission.type,
+      0.7, // 70% similarity threshold
+      3    // Show top 3 matches
+    );
+
+    const embed = buildSubmissionEmbed({ 
+      submission, 
+      statusOverride: 'pending', 
+      user,
+      similarQuestions,
+    });
     const components = buildApprovalButtons('pending');
     const message = await (approvalChannel as TextChannel).send({
       embeds: [embed],
@@ -153,6 +190,7 @@ export const postSubmissionForApproval = async ({
     logger.info('Posted submission for approval', {
       submissionId: submission.submission_id,
       channelId: config.approvalChannelId,
+      similarQuestionsFound: similarQuestions.length,
     });
 
     return message;
