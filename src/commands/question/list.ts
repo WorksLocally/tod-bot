@@ -41,10 +41,14 @@ export const executeList = async (
     return `${value.slice(0, 137)}...`;
   };
 
-  const lines = questions.map(
-    (q) =>
-      `[${q.type.toUpperCase()}] ${q.question_id} (pos ${q.position}) - ${formatText(q.text)}`,
-  );
+  const lines: string[] = [];
+  questions.forEach((q, idx) => {
+    lines.push(`[${q.type.toUpperCase()}] ${formatText(q.text)}`);
+    lines.push(`ID: ${q.question_id} | Position: ${q.position}`);
+    if (idx < questions.length - 1) {
+      lines.push(''); // Empty line for spacing between questions
+    }
+  });
 
   const chunks = chunkLines(lines);
   await interaction.reply({
