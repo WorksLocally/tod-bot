@@ -1,10 +1,11 @@
 /**
  * CLI utility for registering slash commands with a guild during development.
  *
- * Usage: npm run deploy:commands
- *        or: npx tsx scripts/deploy-commands.ts
+ * Usage: npm run deploy:commands (recommended)
+ *        or: npx tsx scripts/deploy-commands.ts (after npm install)
  *
  * Note: Do not run with 'node scripts/deploy-commands.ts' directly.
+ *       Node.js cannot execute TypeScript files without a transpiler.
  *       Either use 'npm run deploy:commands' or build first with 'npm run build'
  *       and then run 'node dist/scripts/deploy-commands.js'
  *
