@@ -171,7 +171,7 @@ export const postSubmissionForApproval = async ({
       submission, 
       statusOverride: 'pending', 
       user,
-      similarQuestions: similarQuestions.length > 0 ? similarQuestions : undefined,
+      similarQuestions,
     });
     const components = buildApprovalButtons('pending');
     const message = await (approvalChannel as TextChannel).send({
