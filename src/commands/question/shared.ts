@@ -39,7 +39,7 @@ export const ensurePrivileged = async (
  */
 export const buildQuestionDetailEmbed = (question: StoredQuestion): EmbedBuilder =>
   new EmbedBuilder()
-    .setTitle(`${question.type === 'truth' ? 'Truth' : 'Dare'} Question`)
+    .setTitle(`${question.type === 'truth' ? 'Truth' : 'Dare'}`)
     .setDescription(question.text)
     .setColor(question.type === 'truth' ? 0x2ecc71 : 0xe67e22)
     .addFields(
