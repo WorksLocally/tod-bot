@@ -39,7 +39,6 @@ export const executeList = async (
   });
 
   const chunks = chunkLines(lines);
-  
   // Determine type parameter for pagination buttons
   const typeParam = type ?? 'all';
   
