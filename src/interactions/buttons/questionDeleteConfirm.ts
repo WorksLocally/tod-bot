@@ -25,7 +25,8 @@ export const match = (customId: string): boolean => {
 export const execute = async (
   interaction: ButtonInteraction
 ): Promise<void> => {
-  const [action, questionId] = interaction.customId.split(':');
+  const [action, ...rest] = interaction.customId.split(':');
+  const questionId = rest.join(':'); // Handle question IDs that might contain colons
 
   if (!questionId) {
     await interaction.update({

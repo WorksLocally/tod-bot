@@ -40,9 +40,11 @@ export const executeDelete = async (
   const row = new ActionRowBuilder<ButtonBuilder>()
     .addComponents(confirmButton, cancelButton);
 
-  // Truncate question text for display
-  const displayText = question.text.length > 100 
-    ? `${question.text.slice(0, 97)}...` 
+  // Truncate question text for display (max 100 chars, truncate at 97 + ellipsis)
+  const MAX_DISPLAY_LENGTH = 100;
+  const TRUNCATE_LENGTH = 97;
+  const displayText = question.text.length > MAX_DISPLAY_LENGTH 
+    ? `${question.text.slice(0, TRUNCATE_LENGTH)}...` 
     : question.text;
 
   await interaction.reply({
