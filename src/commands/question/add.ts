@@ -1,5 +1,5 @@
 /**
- * Subcommand handler for adding questions or approving submissions.
+ * Subcommand handler for adding questions.
  *
  * @module src/commands/question/add
  */

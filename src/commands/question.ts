@@ -27,7 +27,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((subcommand) =>
     subcommand
       .setName('add')
-      .setDescription('Add a new question or approve a submission.')
+      .setDescription('Add a new question.')
       .addStringOption((option) =>
         option
           .setName('type')
