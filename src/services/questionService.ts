@@ -7,10 +7,17 @@
 import db from '../database/client.js';
 import { generateQuestionId } from '../utils/id.js';
 import { sanitizeText } from '../utils/sanitize.js';
+import { LRUCache } from '../utils/lruCache.js';
 
 const VALID_QUESTION_TYPES = new Set(['truth', 'dare']);
 
 export type QuestionType = 'truth' | 'dare';
+
+// LRU Cache for frequently accessed questions (capacity: 100 questions)
+const questionCache = new LRUCache<string, StoredQuestion>(100);
+
+// Cache for recently fetched questions to reduce DB queries (capacity: 50)
+const nextQuestionCache = new LRUCache<QuestionType, QuestionForRotation>(50);
 
 /**
  * Normalises and validates a provided question type value.
@@ -134,7 +141,15 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
       }
     }
 
-    return STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
+    const result = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
+    
+    // Cache the newly added question
+    questionCache.set(questionId, result);
+    
+    // Invalidate next question cache for this type since we added a new one
+    nextQuestionCache.delete(questionType);
+    
+    return result;
   });
 
   return insert();
@@ -158,6 +173,10 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
   }
 
   const info = STATEMENTS.updateQuestion.run(sanitizedText, questionId);
+  
+  // Invalidate cache for this question
+  questionCache.delete(questionId);
+  
   return info.changes;
 };
 
@@ -169,6 +188,10 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
  */
 export const deleteQuestion = (questionId: string): number => {
   const info = STATEMENTS.deleteQuestion.run(questionId);
+  
+  // Remove from cache
+  questionCache.delete(questionId);
+  
   return info.changes;
 };
 
@@ -179,7 +202,19 @@ export const deleteQuestion = (questionId: string): number => {
  * @returns Matching question, if present.
  */
 export const getQuestionById = (questionId: string): StoredQuestion | undefined => {
-  return STATEMENTS.getQuestionById.get(questionId) as StoredQuestion | undefined;
+  // Check cache first
+  const cached = questionCache.get(questionId);
+  if (cached) {
+    return cached;
+  }
+  
+  // Fetch from database and cache
+  const question = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion | undefined;
+  if (question) {
+    questionCache.set(questionId, question);
+  }
+  
+  return question;
 };
 
 /**

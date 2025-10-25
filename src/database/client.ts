@@ -41,6 +41,9 @@ db.exec(`
 
   CREATE UNIQUE INDEX IF NOT EXISTS idx_questions_type_position
     ON questions (type, position);
+  
+  CREATE INDEX IF NOT EXISTS idx_questions_type
+    ON questions (type);
 
   CREATE TABLE IF NOT EXISTS rotation_state (
     type TEXT PRIMARY KEY,
@@ -64,6 +67,12 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_submissions_status
     ON submissions (status);
+  
+  CREATE INDEX IF NOT EXISTS idx_submissions_user_status
+    ON submissions (user_id, status);
+  
+  CREATE INDEX IF NOT EXISTS idx_submissions_type_status
+    ON submissions (type, status);
 `);
 
 interface IndexInfo {

@@ -11,6 +11,70 @@ import { findSimilarQuestions, type SimilarityMatch } from './similarityService.
 import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
+import { LRUCache } from '../utils/lruCache.js';
+
+// Cache for approval channel to avoid repeated fetches (approval channel doesn't change)
+let cachedApprovalChannel: TextChannel | null = null;
+let cachedApprovalChannelId: string | null = null;
+
+// Cache for user objects to reduce repeated fetches (users don't change frequently)
+const userCache = new LRUCache<string, User>(100);
+
+/**
+ * Retrieves and caches the approval channel to reduce Discord API calls.
+ *
+ * @param client - Discord client.
+ * @param channelId - Channel ID to fetch.
+ * @returns The text channel or null if not found.
+ */
+const getApprovalChannel = async (client: Client, channelId: string): Promise<TextChannel | null> => {
+  // Return cached channel if we already fetched it for this ID
+  if (cachedApprovalChannelId === channelId && cachedApprovalChannel) {
+    return cachedApprovalChannel;
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return null;
+    }
+
+    // Cache the channel
+    cachedApprovalChannel = channel as TextChannel;
+    cachedApprovalChannelId = channelId;
+    
+    return cachedApprovalChannel;
+  } catch (error) {
+    logger.error('Failed to fetch approval channel', { error, channelId });
+    return null;
+  }
+};
+
+/**
+ * Retrieves and caches a user to reduce Discord API calls.
+ *
+ * @param client - Discord client.
+ * @param userId - User ID to fetch.
+ * @returns The user or null if not found.
+ */
+const getCachedUser = async (client: Client, userId: string): Promise<User | null> => {
+  // Check cache first
+  const cached = userCache.get(userId);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const user = await client.users.fetch(userId);
+    if (user) {
+      userCache.set(userId, user);
+    }
+    return user;
+  } catch (error) {
+    logger.warn('Failed to fetch user', { error, userId });
+    return null;
+  }
+};
 
 /**
  * Maximum length for preview text in similarity match display.
@@ -106,8 +170,14 @@ const buildSubmissionEmbed = ({
   return embed;
 };
 
+// Cache for approval buttons (they're always the same for pending status)
+// Note: These buttons are static and never change, so no invalidation is needed.
+// In Node.js single-threaded event loop, concurrent creation is not possible.
+let cachedApprovalButtons: ActionRowBuilder<ButtonBuilder>[] | null = null;
+
 /**
  * Builds action row with approve and reject buttons for submission moderation.
+ * Buttons are cached after first creation for performance.
  *
  * @param status - Current status of the submission.
  * @returns Action row with buttons, or empty array if submission is not pending.
@@ -117,6 +187,12 @@ const buildApprovalButtons = (status: SubmissionStatus): ActionRowBuilder<Button
     return [];
   }
 
+  // Return cached buttons if available
+  if (cachedApprovalButtons) {
+    return cachedApprovalButtons;
+  }
+
+  // Build buttons only once
   const approveButton = new ButtonBuilder()
     .setCustomId('approval_approve')
     .setLabel('Approve')
@@ -131,7 +207,9 @@ const buildApprovalButtons = (status: SubmissionStatus): ActionRowBuilder<Button
 
   const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(approveButton, rejectButton);
 
-  return [actionRow];
+  cachedApprovalButtons = [actionRow];
+  
+  return cachedApprovalButtons;
 };
 
 interface PostSubmissionForApprovalParams {
@@ -154,8 +232,8 @@ export const postSubmissionForApproval = async ({
   user,
 }: PostSubmissionForApprovalParams): Promise<Message> => {
   try {
-    const approvalChannel = await client.channels.fetch(config.approvalChannelId);
-    if (!approvalChannel || !approvalChannel.isTextBased()) {
+    const approvalChannel = await getApprovalChannel(client, config.approvalChannelId);
+    if (!approvalChannel) {
       throw new Error('Approval channel not found.');
     }
 
@@ -174,7 +252,7 @@ export const postSubmissionForApproval = async ({
       similarQuestions,
     });
     const components = buildApprovalButtons('pending');
-    const message = await (approvalChannel as TextChannel).send({
+    const message = await approvalChannel.send({
       embeds: [embed],
       components,
       allowedMentions: { parse: [] },
@@ -237,8 +315,8 @@ export const updateSubmissionMessageStatus = async ({
   }
 
   try {
-    const channel = await client.channels.fetch(submission.approval_channel_id);
-    if (!channel || !channel.isTextBased()) {
+    const channel = await getApprovalChannel(client, submission.approval_channel_id);
+    if (!channel) {
       logger.warn('Approval channel not found while updating submission status', {
         submissionId: submission.submission_id,
         channelId: submission.approval_channel_id,
@@ -246,7 +324,7 @@ export const updateSubmissionMessageStatus = async ({
       return null;
     }
 
-    const message = await (channel as TextChannel).messages.fetch(submission.approval_message_id);
+    const message = await channel.messages.fetch(submission.approval_message_id);
     if (!message) {
       logger.warn('Approval message not found while updating submission status', {
         submissionId: submission.submission_id,
@@ -333,7 +411,7 @@ export const notifySubmitter = async ({
   reason,
 }: NotifySubmitterParams): Promise<void> => {
   try {
-    const user = await client.users.fetch(userId);
+    const user = await getCachedUser(client, userId);
     if (!user) {
       return;
     }
