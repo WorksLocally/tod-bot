@@ -7,7 +7,7 @@
       "ignore_watch": [
         "logs",
         "node_modules",
-        "data",
+        "data/**",
         ".git",
         "*.log",
         ".env"
