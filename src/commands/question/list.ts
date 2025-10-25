@@ -8,6 +8,7 @@ import { MessageFlags, ChatInputCommandInteraction, codeBlock } from 'discord.js
 import * as questionService from '../../services/questionService.js';
 import type { QuestionType } from '../../services/questionService.js';
 import { chunkLines } from './shared.js';
+import { buildPaginationComponents } from '../../utils/paginationComponents.js';
 
 /**
  * Handles the 'list' subcommand for /question.
@@ -51,17 +52,19 @@ export const executeList = async (
   });
 
   const chunks = chunkLines(lines);
+  
+  // Determine type parameter for pagination buttons
+  const typeParam = type ?? 'all';
+  
+  // Build pagination components only if there's more than one page
+  const components = chunks.length > 1 
+    ? buildPaginationComponents(0, chunks.length, typeParam) 
+    : [];
+
   await interaction.reply({
     content: codeBlock(chunks[0]),
+    components,
     flags: MessageFlags.Ephemeral,
     allowedMentions: { parse: [] },
   });
-
-  for (const chunk of chunks.slice(1)) {
-    await interaction.followUp({
-      content: codeBlock(chunk),
-      flags: MessageFlags.Ephemeral,
-      allowedMentions: { parse: [] },
-    });
-  }
 };
