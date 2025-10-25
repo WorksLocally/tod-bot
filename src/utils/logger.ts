@@ -69,9 +69,19 @@ const logger = createLogger({
     format.timestamp(),
     format.printf((info) => {
       const { timestamp, level, message, stack, ...rest } = info;
-      const sanitized = sanitizeMeta(rest);
-      const restString =
-        sanitized && Object.keys(sanitized as Record<string, unknown>).length ? ` ${JSON.stringify(sanitized)}` : '';
+      
+      // Fast path: skip sanitization and stringification if no metadata
+      const hasMetadata = Object.keys(rest).length > 0;
+      let restString = '';
+      
+      if (hasMetadata) {
+        const sanitized = sanitizeMeta(rest);
+        // Only stringify if we have actual metadata after sanitization
+        if (sanitized && Object.keys(sanitized as Record<string, unknown>).length > 0) {
+          restString = ` ${JSON.stringify(sanitized)}`;
+        }
+      }
+      
       const base = `${timestamp} [${level.toUpperCase()}] ${message}${restString}`;
       if (stack && typeof stack === 'string') {
         return `${base}\n${stack}`;

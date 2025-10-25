@@ -11,6 +11,40 @@ import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
 
+// Cache for approval channel to avoid repeated fetches (approval channel doesn't change)
+let cachedApprovalChannel: TextChannel | null = null;
+let cachedApprovalChannelId: string | null = null;
+
+/**
+ * Retrieves and caches the approval channel to reduce Discord API calls.
+ *
+ * @param client - Discord client.
+ * @param channelId - Channel ID to fetch.
+ * @returns The text channel or null if not found.
+ */
+const getApprovalChannel = async (client: Client, channelId: string): Promise<TextChannel | null> => {
+  // Return cached channel if we already fetched it for this ID
+  if (cachedApprovalChannelId === channelId && cachedApprovalChannel) {
+    return cachedApprovalChannel;
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) {
+      return null;
+    }
+
+    // Cache the channel
+    cachedApprovalChannel = channel as TextChannel;
+    cachedApprovalChannelId = channelId;
+    
+    return cachedApprovalChannel;
+  } catch (error) {
+    logger.error('Failed to fetch approval channel', { error, channelId });
+    return null;
+  }
+};
+
 /**
  * Maps moderation states to display metadata used across embeds and reactions.
  */
@@ -130,14 +164,14 @@ export const postSubmissionForApproval = async ({
   user,
 }: PostSubmissionForApprovalParams): Promise<Message> => {
   try {
-    const approvalChannel = await client.channels.fetch(config.approvalChannelId);
-    if (!approvalChannel || !approvalChannel.isTextBased()) {
+    const approvalChannel = await getApprovalChannel(client, config.approvalChannelId);
+    if (!approvalChannel) {
       throw new Error('Approval channel not found.');
     }
 
     const embed = buildSubmissionEmbed({ submission, statusOverride: 'pending', user });
     const components = buildApprovalButtons('pending');
-    const message = await (approvalChannel as TextChannel).send({
+    const message = await approvalChannel.send({
       embeds: [embed],
       components,
       allowedMentions: { parse: [] },
@@ -199,8 +233,8 @@ export const updateSubmissionMessageStatus = async ({
   }
 
   try {
-    const channel = await client.channels.fetch(submission.approval_channel_id);
-    if (!channel || !channel.isTextBased()) {
+    const channel = await getApprovalChannel(client, submission.approval_channel_id);
+    if (!channel) {
       logger.warn('Approval channel not found while updating submission status', {
         submissionId: submission.submission_id,
         channelId: submission.approval_channel_id,
@@ -208,7 +242,7 @@ export const updateSubmissionMessageStatus = async ({
       return null;
     }
 
-    const message = await (channel as TextChannel).messages.fetch(submission.approval_message_id);
+    const message = await channel.messages.fetch(submission.approval_message_id);
     if (!message) {
       logger.warn('Approval message not found while updating submission status', {
         submissionId: submission.submission_id,
