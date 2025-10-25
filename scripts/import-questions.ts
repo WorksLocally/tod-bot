@@ -3,12 +3,12 @@
  * This script imports questions from import-truth.json and import-dare.json
  * located in the project root directory.
  *
- * Usage: npm run import:questions (recommended)
- *        or: npx tsx scripts/import-questions.ts (after npm install)
+ * Usage: pnpm run import:questions (recommended)
+ *        or: pnpm exec tsx scripts/import-questions.ts (after pnpm install)
  *
  * Note: Do not run with 'node scripts/import-questions.ts' directly.
  *       Node.js cannot execute TypeScript files without a transpiler.
- *       Either use 'npm run import:questions' or build first with 'npm run build'
+ *       Either use 'pnpm run import:questions' or build first with 'pnpm run build'
  *       and then run 'node dist/scripts/import-questions.js'
  */
 
