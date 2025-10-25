@@ -147,6 +147,8 @@ const buildSubmissionEmbed = ({
 };
 
 // Cache for approval buttons (they're always the same for pending status)
+// Note: These buttons are static and never change, so no invalidation is needed.
+// In Node.js single-threaded event loop, concurrent creation is not possible.
 let cachedApprovalButtons: ActionRowBuilder<ButtonBuilder>[] | null = null;
 
 /**

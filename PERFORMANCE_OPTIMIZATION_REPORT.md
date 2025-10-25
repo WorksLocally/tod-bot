@@ -219,6 +219,20 @@ CREATE INDEX IF NOT EXISTS idx_submissions_type_status
 
 ## Performance Metrics
 
+### Methodology
+
+Performance improvements are **estimated** based on:
+- **Latency analysis** of eliminated operations (e.g., dynamic imports add ~50-100ms)
+- **Operation counting** (e.g., API calls, DB queries, object allocations)
+- **Complexity analysis** (e.g., O(1) cache lookup vs O(n) database query)
+- **Industry benchmarks** for similar optimizations
+
+These are theoretical estimates. Actual performance will vary based on:
+- Network latency to Discord API
+- Database size and hardware
+- Concurrent user load
+- Server specifications
+
 ### Estimated Response Time Improvements
 
 | Operation | Before | After | Improvement |
@@ -229,10 +243,15 @@ CREATE INDEX IF NOT EXISTS idx_submissions_type_status
 | Approval Operations | ~150-200ms | ~90-120ms | **33-40%** |
 | Logging Operations | ~5-10ms | ~3-5ms | **40-50%** |
 
+**Note**: These estimates are based on theoretical analysis. Recommend measuring actual performance in production with monitoring tools like:
+- Application Performance Monitoring (APM)
+- Discord.js interaction timing
+- Custom instrumentation/metrics
+
 ### Overall System Performance
 
 - **Target**: 25% improvement
-- **Achieved**: 35-58% improvement across critical paths
+- **Estimated**: 35-58% improvement across critical paths
 - **User Perception**: Significantly snappier responses
 - **Resource Usage**: 
   - Memory: +5MB for caching (negligible)
