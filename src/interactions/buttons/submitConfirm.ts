@@ -7,9 +7,9 @@
 import { ButtonInteraction, Client } from 'discord.js';
 import { createSubmission } from '../../services/submissionService.js';
 import { postSubmissionForApproval } from '../../services/approvalService.js';
+import { retrievePendingSubmission } from '../../utils/pendingSubmissionCache.js';
 import logger from '../../utils/logger.js';
 import type { BotConfig } from '../../config/env.js';
-import type { QuestionType } from '../../services/questionService.js';
 
 /**
  * Matches custom IDs starting with 'submit_confirm:'.
@@ -28,11 +28,11 @@ export const execute = async (
   client: Client,
   config: BotConfig
 ): Promise<void> => {
-  // Parse the custom ID to extract question type and text
-  // Format: submit_confirm:type:base64EncodedText
+  // Parse the custom ID to extract the pending submission ID
+  // Format: submit_confirm:pendingId
   const parts = interaction.customId.split(':');
   
-  if (parts.length !== 3) {
+  if (parts.length !== 2) {
     await interaction.update({
       content: 'Invalid submission data. Please try submitting again using the `/submit` command.',
       embeds: [],
@@ -41,25 +41,22 @@ export const execute = async (
     return;
   }
 
-  const questionType = parts[1] as QuestionType;
-  let questionText: string;
+  const pendingId = parts[1];
+  const pendingData = retrievePendingSubmission(pendingId);
   
-  try {
-    questionText = Buffer.from(parts[2], 'base64').toString('utf-8');
-  } catch (error) {
-    logger.error('Failed to decode question text from button interaction', { error });
+  if (!pendingData) {
     await interaction.update({
-      content: 'Failed to decode question data. Please try submitting again using the `/submit` command.',
+      content: 'This submission confirmation has expired or is no longer valid. Please submit your question again using the `/submit` command.',
       embeds: [],
       components: [],
     });
     return;
   }
 
-  // Validate question type
-  if (questionType !== 'truth' && questionType !== 'dare') {
+  // Verify the user is the same one who initiated the submission
+  if (pendingData.userId !== interaction.user.id) {
     await interaction.update({
-      content: 'Invalid question type. Please try submitting again using the `/submit` command.',
+      content: 'You can only confirm your own submissions.',
       embeds: [],
       components: [],
     });
@@ -69,17 +66,17 @@ export const execute = async (
   let submission;
   try {
     submission = createSubmission({
-      type: questionType,
-      text: questionText,
-      userId: interaction.user.id,
-      guildId: interaction.guildId ?? undefined,
+      type: pendingData.type,
+      text: pendingData.text,
+      userId: pendingData.userId,
+      guildId: pendingData.guildId,
       approvalChannelId: config.approvalChannelId,
     });
   } catch (error) {
     logger.error('Failed to store submission from confirm button', {
       error,
       userId: interaction.user.id,
-      type: questionType,
+      type: pendingData.type,
     });
     await interaction.update({
       content:

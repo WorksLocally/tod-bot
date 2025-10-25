@@ -8,6 +8,7 @@ import { SlashCommandBuilder, MessageFlags, ChatInputCommandInteraction, Client,
 import { createSubmission } from '../services/submissionService.js';
 import { postSubmissionForApproval } from '../services/approvalService.js';
 import { findSimilarQuestions } from '../services/similarityService.js';
+import { storePendingSubmission } from '../utils/pendingSubmissionCache.js';
 import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
@@ -98,8 +99,16 @@ export const execute = async (
       })
       .setFooter({ text: 'Similar questions help avoid duplicates in our database.' });
 
+    // Store the pending submission data
+    const pendingId = storePendingSubmission({
+      type: questionType,
+      text: sanitized,
+      userId: interaction.user.id,
+      guildId: interaction.guildId ?? undefined,
+    });
+
     const submitButton = new ButtonBuilder()
-      .setCustomId(`submit_confirm:${questionType}:${Buffer.from(sanitized).toString('base64')}`)
+      .setCustomId(`submit_confirm:${pendingId}`)
       .setLabel('Submit Anyway')
       .setStyle(ButtonStyle.Success)
       .setEmoji('✅');
