@@ -10,10 +10,14 @@ import type { SubmissionRecord, SubmissionStatus } from './submissionService.js'
 import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
+import { LRUCache } from '../utils/lruCache.js';
 
 // Cache for approval channel to avoid repeated fetches (approval channel doesn't change)
 let cachedApprovalChannel: TextChannel | null = null;
 let cachedApprovalChannelId: string | null = null;
+
+// Cache for user objects to reduce repeated fetches (users don't change frequently)
+const userCache = new LRUCache<string, User>(100);
 
 /**
  * Retrieves and caches the approval channel to reduce Discord API calls.
@@ -41,6 +45,32 @@ const getApprovalChannel = async (client: Client, channelId: string): Promise<Te
     return cachedApprovalChannel;
   } catch (error) {
     logger.error('Failed to fetch approval channel', { error, channelId });
+    return null;
+  }
+};
+
+/**
+ * Retrieves and caches a user to reduce Discord API calls.
+ *
+ * @param client - Discord client.
+ * @param userId - User ID to fetch.
+ * @returns The user or null if not found.
+ */
+const getCachedUser = async (client: Client, userId: string): Promise<User | null> => {
+  // Check cache first
+  const cached = userCache.get(userId);
+  if (cached) {
+    return cached;
+  }
+
+  try {
+    const user = await client.users.fetch(userId);
+    if (user) {
+      userCache.set(userId, user);
+    }
+    return user;
+  } catch (error) {
+    logger.warn('Failed to fetch user', { error, userId });
     return null;
   }
 };
@@ -116,8 +146,12 @@ const buildSubmissionEmbed = ({
   return embed;
 };
 
+// Cache for approval buttons (they're always the same for pending status)
+let cachedApprovalButtons: ActionRowBuilder<ButtonBuilder>[] | null = null;
+
 /**
  * Builds action row with approve and reject buttons for submission moderation.
+ * Buttons are cached after first creation for performance.
  *
  * @param status - Current status of the submission.
  * @returns Action row with buttons, or empty array if submission is not pending.
@@ -127,6 +161,12 @@ const buildApprovalButtons = (status: SubmissionStatus): ActionRowBuilder<Button
     return [];
   }
 
+  // Return cached buttons if available
+  if (cachedApprovalButtons) {
+    return cachedApprovalButtons;
+  }
+
+  // Build buttons only once
   const approveButton = new ButtonBuilder()
     .setCustomId('approval_approve')
     .setLabel('Approve')
@@ -141,7 +181,9 @@ const buildApprovalButtons = (status: SubmissionStatus): ActionRowBuilder<Button
 
   const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(approveButton, rejectButton);
 
-  return [actionRow];
+  cachedApprovalButtons = [actionRow];
+  
+  return cachedApprovalButtons;
 };
 
 interface PostSubmissionForApprovalParams {
@@ -329,7 +371,7 @@ export const notifySubmitter = async ({
   reason,
 }: NotifySubmitterParams): Promise<void> => {
   try {
-    const user = await client.users.fetch(userId);
+    const user = await getCachedUser(client, userId);
     if (!user) {
       return;
     }
