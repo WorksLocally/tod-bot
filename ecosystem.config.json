@@ -7,7 +7,6 @@
       "ignore_watch": [
         "logs",
         "node_modules",
-        "dist",
         "data",
         ".git",
         "*.log",
