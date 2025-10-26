@@ -34,37 +34,44 @@ The database is created automatically on first run using SQLite3 via `better-sql
 
 - `/truth` - Serve the next truth question and reuse buttons for more.
 - `/dare` - Serve the next dare question.
-- `/submit` - Users submit questions for moderator approval. Posts to the configured channel with pending status.
+- `/submit` - Opens a modal for users to submit questions for moderator approval. Posts to the configured channel with pending status.
 
 ### Moderator Commands (`/question`)
 
-- `add` - Add a question directly or approve a submission (`submission-id` optional). Assigns an 8-character ID and updates approval status.
+- `add` - Add a question directly or approve a submission. Assigns an 8-character ID and updates approval status.
 - `delete` - Remove a question by ID.
 - `edit` - Update the text of a question.
 - `list` - Show all questions (optionally filtered by type).
 - `view` - Show question details by ID.
-- `reject` - Reject a pending submission, update the approval message, and DM the submitter.
 
 ## Approval Workflow
 
-1. `/submit` records the request and posts an embed with a check-mark reaction.
-2. Moderators run `/question add submission-id:XXXXXX` to approve, which:
-   - Assigns an ID, appends to the rotation list, updates the embed, swaps the reaction to a check mark, and DMs the submitter.
-3. `/question reject` swaps the reaction to a cross mark and DMs the submitter with the optional reason.
+1. `/submit` opens a modal for users to enter their question, then posts an embed to the approval channel with Approve and Reject buttons.
+2. Moderators click the **Approve** button to approve the submission, which:
+   - Assigns an 8-character ID, adds to the question rotation, updates the embed, and DMs the submitter.
+3. Moderators click the **Reject** button to reject the submission, which:
+   - Opens a modal for an optional rejection reason, updates the embed, and DMs the submitter with the reason.
 
 ## Project Structure
 
-- `src/index.js` - Discord client bootstrap.
-- `src/commands/` - Slash command handlers split by feature.
-- `src/services/` - Database operations, approval notifications, rotation logic.
-- `src/utils/` - ID generation, embeds, permission helpers.
+- `src/index.ts` - Discord client bootstrap and interaction routing.
+- `src/commands/` - Slash command handlers (truth, dare, submit, question).
+- `src/interactions/` - Button and modal handlers for user interactions.
+- `src/services/` - Business logic for questions, submissions, approvals, and similarity checking.
+- `src/handlers/` - Command and button loader modules.
+- `src/database/` - Database client and connection management.
+- `src/config/` - Environment configuration.
+- `src/utils/` - Utilities including ID generation, logging, rate limiting, permissions, sanitization, and caching.
 - `data/` - Default location for the SQLite database file.
 
 ## Development Notes
 
-- Commands and interactions are hot-loaded from their respective folders.
+- Commands are loaded from the top level of `src/commands/` directory.
+- Button handlers are loaded from `src/interactions/buttons/` directory.
+- Modal handlers are defined in `src/interactions/modals/` directory.
 - Question rotation walks through each list sequentially and loops back to the start.
 - All question IDs are 8-character uppercase alphanumeric strings.
+- The project is written in TypeScript and compiled to JavaScript before running.
 
 ## Security
 
