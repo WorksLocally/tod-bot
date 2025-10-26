@@ -10,6 +10,7 @@ import { postSubmissionForApproval } from '../services/approvalService.js';
 import { findSimilarQuestions } from '../services/similarityService.js';
 import { storePendingSubmission } from '../utils/pendingSubmissionCache.js';
 import { formatSimilarQuestions, buildSimilarityWarningEmbed, buildSimilarityWarningButtons } from '../utils/similarityWarning.js';
+import { submissionRateLimiter } from '../utils/rateLimiter.js';
 import logger from '../utils/logger.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { BotConfig } from '../config/env.js';
@@ -48,6 +49,23 @@ export const execute = async (
   client: Client,
   config: BotConfig
 ): Promise<void> => {
+  // Check rate limit
+  if (submissionRateLimiter.isRateLimited(interaction.user.id)) {
+    const timeUntilReset = submissionRateLimiter.getTimeUntilReset(interaction.user.id);
+    const minutesRemaining = Math.ceil(timeUntilReset / 60000);
+    
+    await interaction.reply({
+      content: `You have submitted too many questions recently. Please try again in ${minutesRemaining} minute${minutesRemaining !== 1 ? 's' : ''}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    
+    logger.info('User rate limited on submission', {
+      userId: interaction.user.id,
+      timeUntilReset,
+    });
+    return;
+  }
+
   const questionType = interaction.options.getString('type', true) as QuestionType;
   const rawText = interaction.options.getString('text', true);
   const sanitized = sanitizeText(rawText, { maxLength: 4000 });
