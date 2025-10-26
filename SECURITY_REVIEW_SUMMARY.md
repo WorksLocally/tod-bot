@@ -112,7 +112,7 @@ The following security measures were already in place:
    - **Purpose**: Prevent abuse and spam
    - **Implementation**: `src/utils/rateLimiter.ts`
    - **Configuration**:
-     - Submissions: 5 per 10 minutes per user
+     - Submissions: 10 per 5 minutes per user
      - Questions: 20 per minute per user
    - **Features**:
      - Sliding window algorithm

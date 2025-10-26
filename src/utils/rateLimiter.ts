@@ -155,8 +155,8 @@ export class RateLimiter {
 }
 
 // Global rate limiter instances for different command types
-// Submission rate limit: 5 submissions per 10 minutes per user
-export const submissionRateLimiter = new RateLimiter(5, 10 * 60 * 1000);
+// Submission rate limit: 10 submissions per 5 minutes per user
+export const submissionRateLimiter = new RateLimiter(10, 5 * 60 * 1000);
 
 // Question command rate limit: 20 commands per minute per user (prevents spam of /truth, /dare)
 export const questionRateLimiter = new RateLimiter(20, 60 * 1000);

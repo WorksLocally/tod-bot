@@ -115,8 +115,8 @@ Two rate limiters protect against abuse:
 ```typescript
 // Location: src/utils/rateLimiter.ts
 
-// Submission rate limit: 5 submissions per 10 minutes
-export const submissionRateLimiter = new RateLimiter(5, 10 * 60 * 1000);
+// Submission rate limit: 10 submissions per 5 minutes
+export const submissionRateLimiter = new RateLimiter(10, 5 * 60 * 1000);
 
 // Question rate limit: 20 questions per minute
 export const questionRateLimiter = new RateLimiter(20, 60 * 1000);
