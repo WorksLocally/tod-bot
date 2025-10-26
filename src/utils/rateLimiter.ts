@@ -142,7 +142,7 @@ export class RateLimiter {
     let rateLimited = 0;
 
     for (const entry of this.limits.values()) {
-      if (entry.count > this.maxRequests && now < entry.resetAt) {
+      if (entry.count >= this.maxRequests && now < entry.resetAt) {
         rateLimited += 1;
       }
     }

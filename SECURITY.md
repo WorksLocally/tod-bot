@@ -98,7 +98,7 @@ This bot requires the following permissions:
 1. **Input Sanitization**: All user inputs are sanitized using the `sanitizeText` utility
 2. **SQL Injection Prevention**: Prepared statements are used for all database operations
 3. **Permission Checks**: Role-based access control for administrative commands
-4. **Rate Limiting**: Discord's built-in rate limiting protects against spam
+4. **Application Rate Limiting**: Sliding window rate limiter protects against abuse (10 submissions per 5 minutes, 20 questions per minute per user)
 5. **Secure ID Generation**: Cryptographically secure random ID generation
 6. **Environment Isolation**: Configuration via environment variables
 7. **Dependency Scanning**: Automated dependency updates via Dependabot
