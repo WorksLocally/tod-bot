@@ -18,7 +18,6 @@ import { executeDelete } from './question/delete.js';
 import { executeEdit } from './question/edit.js';
 import { executeList } from './question/list.js';
 import { executeView } from './question/view.js';
-import { executeReject } from './question/reject.js';
 
 export const data = new SlashCommandBuilder()
   .setName('question')
@@ -91,24 +90,6 @@ export const data = new SlashCommandBuilder()
       .addStringOption((option) =>
         option.setName('id').setDescription('Question ID.').setRequired(true),
       ),
-  )
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName('reject')
-      .setDescription('Reject a pending submission.')
-      .addStringOption((option) =>
-        option
-          .setName('submission-id')
-          .setDescription('Submission ID to reject.')
-          .setRequired(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName('reason')
-          .setDescription('Optional reason shared with the submitter.')
-          .setRequired(false)
-          .setMaxLength(1000),
-      ),
   );
 
 /**
@@ -121,7 +102,7 @@ export const data = new SlashCommandBuilder()
  */
 export const execute = async (
   interaction: ChatInputCommandInteraction,
-  client: Client,
+  _client: Client,
   config: BotConfig
 ): Promise<void> => {
   if (!(await ensurePrivileged(interaction, config))) {
@@ -145,9 +126,6 @@ export const execute = async (
       break;
     case 'view':
       await executeView(interaction);
-      break;
-    case 'reject':
-      await executeReject(interaction, client);
       break;
     default:
       await interaction.reply({
