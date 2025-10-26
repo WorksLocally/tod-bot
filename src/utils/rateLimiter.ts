@@ -69,11 +69,14 @@ export class RateLimiter {
       return false;
     }
 
-    // Increment the counter
-    entry.count += 1;
+    // Check if limit would be exceeded by this request
+    if (entry.count >= this.maxRequests) {
+      return true;
+    }
 
-    // Check if limit exceeded
-    return entry.count > this.maxRequests;
+    // Increment the counter (request is allowed)
+    entry.count += 1;
+    return false;
   }
 
   /**
