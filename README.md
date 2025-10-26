@@ -65,3 +65,18 @@ The database is created automatically on first run using SQLite3 via `better-sql
 - Commands and interactions are hot-loaded from their respective folders.
 - Question rotation walks through each list sequentially and loops back to the start.
 - All question IDs are 8-character uppercase alphanumeric strings.
+
+## Security
+
+This bot implements comprehensive security measures:
+
+- **Input Validation**: All user inputs are sanitized and validated
+- **SQL Injection Prevention**: Prepared statements for all database operations
+- **Rate Limiting**: Protection against spam and abuse
+- **Access Control**: Role-based permissions for administrative commands
+- **Secure Token Storage**: Environment variables for sensitive configuration
+- **Automated Security**: CodeQL scanning and Dependabot updates
+
+For security concerns or to report vulnerabilities, please see our [Security Policy](SECURITY.md).
+
+For detailed security implementation information, see [SECURITY_IMPLEMENTATION.md](SECURITY_IMPLEMENTATION.md).
