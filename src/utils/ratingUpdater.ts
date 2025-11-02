@@ -79,7 +79,14 @@ export const updateQuestionRating = async (
 
   // Update the embed footer with new rating using Discord.js EmbedBuilder
   const updatedEmbed = EmbedBuilder.from(embed);
-  const newFooterText = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  let newFooterText: string;
+  if (/Rating:/.test(footerText)) {
+    newFooterText = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  } else {
+    // Add separator if needed
+    const sep = footerText.trim().length > 0 && !footerText.trim().endsWith('|') ? ' | ' : '';
+    newFooterText = `${footerText}${sep}Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
+  }
   updatedEmbed.setFooter({ text: newFooterText });
 
   await interaction.update({
