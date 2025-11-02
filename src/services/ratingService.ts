@@ -41,7 +41,7 @@ export const addOrUpdateRating = (
           questionId,
           userId
         );
-        logger.info('Removed question rating', { questionId, userId, rating });
+        logger.info('Removed question rating', { questionId, userId, removedRating: rating });
         action = 'removed';
       } else {
         // Different rating - update it

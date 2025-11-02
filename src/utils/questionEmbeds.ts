@@ -6,6 +6,7 @@
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, User } from 'discord.js';
 import { getRatingCounts } from '../services/ratingService.js';
+import { formatNetRating } from './ratingUpdater.js';
 
 const TYPE_LABELS = {
   truth: { label: 'Truth', color: 0x2ecc71 },
@@ -73,8 +74,7 @@ interface BuildQuestionEmbedOptions {
 export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbedOptions): EmbedBuilder => {
   const typeMeta = TYPE_LABELS[question.type] ?? TYPE_LABELS.truth;
   const ratings = getRatingCounts(question.question_id);
-  const netRating = ratings.upvotes - ratings.downvotes;
-  const ratingText = netRating > 0 ? `+${netRating}` : `${netRating}`;
+  const ratingText = formatNetRating(ratings.upvotes, ratings.downvotes);
 
   const embed = new EmbedBuilder()
     .setTitle(typeMeta.label)

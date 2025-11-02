@@ -14,6 +14,18 @@ import logger from './logger.js';
 export const VOTE_RECORDED_MESSAGE = 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.';
 
 /**
+ * Formats the net rating as a string with + or - prefix.
+ *
+ * @param upvotes - Number of upvotes.
+ * @param downvotes - Number of downvotes.
+ * @returns Formatted net rating string (e.g., "+5", "-3", "0").
+ */
+export const formatNetRating = (upvotes: number, downvotes: number): string => {
+  const netRating = upvotes - downvotes;
+  return netRating > 0 ? `+${netRating}` : `${netRating}`;
+};
+
+/**
  * Updates the question embed footer with new rating information.
  *
  * @param interaction - The button interaction.
@@ -47,8 +59,7 @@ export const updateQuestionRating = async (
     ratings = { upvotes: 0, downvotes: 0 };
   }
 
-  const netRating = ratings.upvotes - ratings.downvotes;
-  const ratingText = netRating > 0 ? `+${netRating}` : `${netRating}`;
+  const ratingText = formatNetRating(ratings.upvotes, ratings.downvotes);
 
   let responseMessage: string;
   const ratingLabel = ratingType === 'upvote' ? 'Upvote' : 'Downvote';
@@ -63,7 +74,7 @@ export const updateQuestionRating = async (
 
   // Update the embed footer with new rating using Discord.js EmbedBuilder
   const updatedEmbed = EmbedBuilder.from(embed);
-  const newFooterText = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  const newFooterText = footerText.replace(/Rating:[^]*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
   updatedEmbed.setFooter({ text: newFooterText });
 
   await interaction.update({
