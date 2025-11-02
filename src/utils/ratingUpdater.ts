@@ -35,8 +35,15 @@ export const updateQuestionRating = async (
 
   const questionId = idMatch[1];
 
-  // Get updated counts
-  const ratings = getRatingCounts(questionId);
+  // Get updated counts (with error handling)
+  let ratings: { upvotes: number; downvotes: number };
+  try {
+    ratings = getRatingCounts(questionId);
+  } catch {
+    // If we can't get counts, use defaults
+    ratings = { upvotes: 0, downvotes: 0 };
+  }
+
   const netRating = ratings.upvotes - ratings.downvotes;
   const ratingText = netRating > 0 ? `+${netRating}` : `${netRating}`;
 

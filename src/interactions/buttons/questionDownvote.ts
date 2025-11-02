@@ -35,7 +35,25 @@ export const execute = async (
     const action = addOrUpdateRating(questionId, userId, -1);
 
     // Update the embed and send response
-    await updateQuestionRating(interaction, action, 'downvote');
+    // If this fails, the rating is already recorded but the UI won't update immediately.
+    // The next time the question is displayed, it will show the correct rating.
+    try {
+      await updateQuestionRating(interaction, action, 'downvote');
+    } catch (updateError) {
+      logger.warn('Failed to update embed after rating change, but rating was saved', {
+        questionId,
+        userId,
+        action,
+        error: updateError,
+      });
+      
+      // Still notify the user that their vote was recorded
+      await interaction.reply({
+        content: 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.',
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
 
     logger.info('User downvoted question', {
       questionId,
