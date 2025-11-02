@@ -4,8 +4,9 @@
  * @module src/utils/ratingUpdater
  */
 
-import { ButtonInteraction, MessageFlags } from 'discord.js';
+import { ButtonInteraction, MessageFlags, EmbedBuilder } from 'discord.js';
 import { getRatingCounts } from '../services/ratingService.js';
+import logger from './logger.js';
 
 /**
  * Error message shown when vote is recorded but display update fails.
@@ -25,20 +26,17 @@ export const updateQuestionRating = async (
   action: 'added' | 'removed' | 'updated',
   ratingType: 'upvote' | 'downvote'
 ): Promise<void> => {
-  // Extract question ID from the embed footer
+  // Extract question ID using the shared function
+  const questionId = extractQuestionId(interaction);
+  if (!questionId) {
+    throw new Error('Unable to find question ID.');
+  }
+
   const embed = interaction.message.embeds[0];
   if (!embed || !embed.footer?.text) {
     throw new Error('Unable to find question information.');
   }
-
-  // Parse question ID from footer text (format: "ID: <question_id> | Rating: ...")
   const footerText = embed.footer.text;
-  const idMatch = footerText.match(/ID:\s*([^\s|]+)/);
-  if (!idMatch) {
-    throw new Error('Unable to find question ID.');
-  }
-
-  const questionId = idMatch[1];
 
   // Get updated counts (with error handling)
   let ratings: { upvotes: number; downvotes: number };
@@ -63,12 +61,10 @@ export const updateQuestionRating = async (
     responseMessage = `${ratingLabel}d! Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   }
 
-  // Update the embed footer with new rating
-  const updatedEmbed = structuredClone(embed.data);
-  if (!updatedEmbed.footer) {
-    throw new Error('Unable to update embed: footer is missing after cloning.');
-  }
-  updatedEmbed.footer.text = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  // Update the embed footer with new rating using Discord.js EmbedBuilder
+  const updatedEmbed = EmbedBuilder.from(embed);
+  const newFooterText = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  updatedEmbed.setFooter({ text: newFooterText });
 
   await interaction.update({
     embeds: [updatedEmbed],
@@ -95,4 +91,68 @@ export const extractQuestionId = (interaction: ButtonInteraction): string | null
   const footerText = embed.footer.text;
   const idMatch = footerText.match(/ID:\s*([^\s|]+)/);
   return idMatch ? idMatch[1] : null;
+};
+
+/**
+ * Handles error recovery when rating update fails but rating was already saved.
+ * Sends appropriate message to user based on interaction state.
+ *
+ * @param interaction - The button interaction.
+ * @param questionId - The question ID.
+ * @param userId - The user ID.
+ * @param action - The action performed ('added', 'removed', or 'updated').
+ * @param error - The error that occurred.
+ */
+export const handleRatingUpdateError = async (
+  interaction: ButtonInteraction,
+  questionId: string,
+  userId: string,
+  action: 'added' | 'removed' | 'updated',
+  error: unknown
+): Promise<void> => {
+  logger.warn('Failed to update embed after rating change, but rating was saved', {
+    questionId,
+    userId,
+    action,
+    error,
+  });
+
+  // Still notify the user that their vote was recorded
+  if (!interaction.replied && !interaction.deferred) {
+    await interaction.reply({
+      content: VOTE_RECORDED_MESSAGE,
+      flags: MessageFlags.Ephemeral,
+    });
+  } else {
+    await interaction.followUp({
+      content: VOTE_RECORDED_MESSAGE,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+};
+
+/**
+ * Handles final error when something goes wrong during rating process.
+ * Sends error message to user if interaction hasn't been replied to.
+ *
+ * @param interaction - The button interaction.
+ * @param error - The error that occurred.
+ * @param userId - The user ID.
+ */
+export const handleRatingError = async (
+  interaction: ButtonInteraction,
+  error: unknown,
+  userId: string
+): Promise<void> => {
+  logger.error('Error handling rating', {
+    error,
+    userId,
+  });
+
+  if (!interaction.replied && !interaction.deferred) {
+    await interaction.reply({
+      content: 'An error occurred while processing your vote.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 };
