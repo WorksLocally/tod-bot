@@ -48,10 +48,17 @@ export const execute = async (
       });
       
       // Still notify the user that their vote was recorded
-      await interaction.followUp({
-        content: 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.',
-        flags: MessageFlags.Ephemeral,
-      });
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.',
+          flags: MessageFlags.Ephemeral,
+        });
+      } else {
+        await interaction.followUp({
+          content: 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
       return;
     }
 
