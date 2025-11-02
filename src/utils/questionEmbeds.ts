@@ -5,6 +5,7 @@
  */
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, User } from 'discord.js';
+import { getRatingCounts } from '../services/ratingService.js';
 
 const TYPE_LABELS = {
   truth: { label: 'Truth', color: 0x2ecc71 },
@@ -21,6 +22,9 @@ interface Question {
 
 // Cache the question component buttons - they never change
 let cachedQuestionComponents: ActionRowBuilder<ButtonBuilder>[] | null = null;
+
+// Cache the rating buttons separately - they also never change
+let cachedRatingButtons: ActionRowBuilder<ButtonBuilder> | null = null;
 
 /**
  * Determines a human-friendly display name for a guild member or user.
@@ -68,13 +72,16 @@ interface BuildQuestionEmbedOptions {
  */
 export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbedOptions): EmbedBuilder => {
   const typeMeta = TYPE_LABELS[question.type] ?? TYPE_LABELS.truth;
+  const ratings = getRatingCounts(question.question_id);
+  const netRating = ratings.upvotes - ratings.downvotes;
+  const ratingText = netRating > 0 ? `+${netRating}` : `${netRating}`;
 
   const embed = new EmbedBuilder()
     .setTitle(typeMeta.label)
     .setDescription(question.text)
     .setColor(typeMeta.color)
     .setFooter({
-      text: `ID: ${question.question_id}`,
+      text: `ID: ${question.question_id} | Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`,
     })
     .setTimestamp(new Date());
 
@@ -92,10 +99,40 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
 };
 
 /**
- * Builds the action row containing Truth, Dare, and Submit Question buttons.
+ * Builds the action row containing rating buttons (upvote and downvote).
  * Components are cached after first creation for performance.
  *
- * @returns Action row with interactive buttons.
+ * @returns Action row with rating buttons.
+ */
+const buildRatingButtons = (): ActionRowBuilder<ButtonBuilder> => {
+  // Return cached buttons if available
+  if (cachedRatingButtons) {
+    return cachedRatingButtons;
+  }
+
+  // Build buttons only once
+  const upvoteButton = new ButtonBuilder()
+    .setCustomId('question_upvote')
+    .setLabel('Upvote')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('⬆️');
+
+  const downvoteButton = new ButtonBuilder()
+    .setCustomId('question_downvote')
+    .setLabel('Downvote')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('⬇️');
+
+  cachedRatingButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(upvoteButton, downvoteButton);
+  
+  return cachedRatingButtons;
+};
+
+/**
+ * Builds the action rows containing Truth, Dare, Submit Question, and rating buttons.
+ * Components are cached after first creation for performance.
+ *
+ * @returns Action rows with interactive buttons.
  */
 export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => {
   // Return cached components if available
@@ -119,7 +156,10 @@ export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => 
     .setLabel('Submit Question')
     .setStyle(ButtonStyle.Success);
 
-  cachedQuestionComponents = [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
+  const navigationRow = new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton);
+  const ratingRow = buildRatingButtons();
+
+  cachedQuestionComponents = [navigationRow, ratingRow];
   
   return cachedQuestionComponents;
 };
