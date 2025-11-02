@@ -65,9 +65,10 @@ export const updateQuestionRating = async (
 
   // Update the embed footer with new rating
   const updatedEmbed = structuredClone(embed.data);
-  if (updatedEmbed.footer) {
-    updatedEmbed.footer.text = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  if (!updatedEmbed.footer) {
+    throw new Error('Unable to update embed: footer is missing after cloning.');
   }
+  updatedEmbed.footer.text = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
 
   await interaction.update({
     embeds: [updatedEmbed],
