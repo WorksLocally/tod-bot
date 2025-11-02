@@ -6,11 +6,16 @@
 
 import db from '../database/client.js';
 import logger from '../utils/logger.js';
+import { LRUCache } from '../utils/lruCache.js';
+
+// Cache for rating counts to reduce database queries
+const ratingCountsCache = new LRUCache<string, { upvotes: number; downvotes: number }>(500);
 
 /**
  * Adds or updates a rating for a question by a user.
  * If the user has already rated the question with the same rating, it removes the rating.
  * If the user has rated with a different rating, it updates to the new rating.
+ * Invalidates the rating counts cache for the question.
  *
  * @param questionId - The question ID.
  * @param userId - The user ID.
@@ -27,6 +32,8 @@ export const addOrUpdateRating = (
       .prepare('SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?')
       .get(questionId, userId) as { rating: number } | undefined;
 
+    let action: 'added' | 'removed' | 'updated';
+
     if (existingRating) {
       if (existingRating.rating === rating) {
         // Same rating - remove it (toggle off)
@@ -35,7 +42,7 @@ export const addOrUpdateRating = (
           userId
         );
         logger.info('Removed question rating', { questionId, userId, rating });
-        return 'removed';
+        action = 'removed';
       } else {
         // Different rating - update it
         db.prepare('UPDATE question_ratings SET rating = ?, created_at = datetime("now") WHERE question_id = ? AND user_id = ?').run(
@@ -44,7 +51,7 @@ export const addOrUpdateRating = (
           userId
         );
         logger.info('Updated question rating', { questionId, userId, rating });
-        return 'updated';
+        action = 'updated';
       }
     } else {
       // No existing rating - add it
@@ -54,8 +61,13 @@ export const addOrUpdateRating = (
         rating
       );
       logger.info('Added question rating', { questionId, userId, rating });
-      return 'added';
+      action = 'added';
     }
+
+    // Invalidate cache for this question
+    ratingCountsCache.delete(questionId);
+
+    return action;
   } catch (error) {
     logger.error('Error adding/updating rating', { error, questionId, userId, rating });
     throw error;
@@ -64,6 +76,7 @@ export const addOrUpdateRating = (
 
 /**
  * Gets the rating counts for a question.
+ * Results are cached to improve performance.
  *
  * @param questionId - The question ID.
  * @returns An object containing upvote and downvote counts.
@@ -71,6 +84,12 @@ export const addOrUpdateRating = (
 export const getRatingCounts = (
   questionId: string
 ): { upvotes: number; downvotes: number } => {
+  // Check cache first
+  const cached = ratingCountsCache.get(questionId);
+  if (cached) {
+    return cached;
+  }
+
   try {
     const result = db
       .prepare(`
@@ -82,10 +101,15 @@ export const getRatingCounts = (
       `)
       .get(questionId) as { upvotes: number | null; downvotes: number | null } | undefined;
 
-    return {
+    const counts = {
       upvotes: result?.upvotes ?? 0,
       downvotes: result?.downvotes ?? 0,
     };
+
+    // Cache the result
+    ratingCountsCache.set(questionId, counts);
+
+    return counts;
   } catch (error) {
     logger.error('Error getting rating counts', { error, questionId });
     return { upvotes: 0, downvotes: 0 };
