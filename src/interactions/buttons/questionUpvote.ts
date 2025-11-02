@@ -6,7 +6,7 @@
 
 import { MessageFlags, ButtonInteraction } from 'discord.js';
 import { addOrUpdateRating } from '../../services/ratingService.js';
-import { extractQuestionId, updateQuestionRating } from '../../utils/ratingUpdater.js';
+import { extractQuestionId, updateQuestionRating, VOTE_RECORDED_MESSAGE } from '../../utils/ratingUpdater.js';
 import logger from '../../utils/logger.js';
 
 export const customId = 'question_upvote';
@@ -50,12 +50,12 @@ export const execute = async (
       // Still notify the user that their vote was recorded
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
-          content: 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.',
+          content: VOTE_RECORDED_MESSAGE,
           flags: MessageFlags.Ephemeral,
         });
       } else {
         await interaction.followUp({
-          content: 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.',
+          content: VOTE_RECORDED_MESSAGE,
           flags: MessageFlags.Ephemeral,
         });
       }

@@ -8,6 +8,11 @@ import { ButtonInteraction, MessageFlags } from 'discord.js';
 import { getRatingCounts } from '../services/ratingService.js';
 
 /**
+ * Error message shown when vote is recorded but display update fails.
+ */
+export const VOTE_RECORDED_MESSAGE = 'Your vote has been recorded, but the display could not be updated. The correct rating will show when the question is displayed again.';
+
+/**
  * Updates the question embed footer with new rating information.
  *
  * @param interaction - The button interaction.
@@ -59,7 +64,7 @@ export const updateQuestionRating = async (
   }
 
   // Update the embed footer with new rating
-  const updatedEmbed = { ...embed.data };
+  const updatedEmbed = structuredClone(embed.data);
   if (updatedEmbed.footer) {
     updatedEmbed.footer.text = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
   }
