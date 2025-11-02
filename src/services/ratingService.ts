@@ -45,7 +45,7 @@ export const addOrUpdateRating = (
         action = 'removed';
       } else {
         // Different rating - update it
-        db.prepare('UPDATE question_ratings SET rating = ?, created_at = datetime("now") WHERE question_id = ? AND user_id = ?').run(
+        db.prepare('UPDATE question_ratings SET rating = ?, updated_at = datetime("now") WHERE question_id = ? AND user_id = ?').run(
           rating,
           questionId,
           userId

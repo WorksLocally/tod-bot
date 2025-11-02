@@ -80,6 +80,7 @@ db.exec(`
     user_id TEXT NOT NULL,
     rating INTEGER NOT NULL CHECK (rating IN (-1, 1)),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (question_id, user_id),
     FOREIGN KEY (question_id) REFERENCES questions(question_id) ON DELETE CASCADE
   );

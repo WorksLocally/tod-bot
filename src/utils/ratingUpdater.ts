@@ -54,7 +54,8 @@ export const updateQuestionRating = async (
   let ratings: { upvotes: number; downvotes: number };
   try {
     ratings = getRatingCounts(questionId);
-  } catch {
+  } catch (err) {
+    logger.debug('Failed to get rating counts, using defaults', { questionId, error: err });
     // If we can't get counts, use defaults
     ratings = { upvotes: 0, downvotes: 0 };
   }
@@ -74,7 +75,7 @@ export const updateQuestionRating = async (
 
   // Update the embed footer with new rating using Discord.js EmbedBuilder
   const updatedEmbed = EmbedBuilder.from(embed);
-  const newFooterText = footerText.replace(/Rating:[^]*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
+  const newFooterText = footerText.replace(/Rating:.*$/, `Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`);
   updatedEmbed.setFooter({ text: newFooterText });
 
   await interaction.update({
