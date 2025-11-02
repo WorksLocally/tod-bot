@@ -28,7 +28,7 @@ export const updateQuestionRating = async (
 
   // Parse question ID from footer text (format: "ID: <question_id> | Rating: ...")
   const footerText = embed.footer.text;
-  const idMatch = footerText.match(/ID:\s*(\S+)/);
+  const idMatch = footerText.match(/ID:\s*([^\s|]+)/);
   if (!idMatch) {
     throw new Error('Unable to find question ID.');
   }
@@ -87,6 +87,6 @@ export const extractQuestionId = (interaction: ButtonInteraction): string | null
   }
 
   const footerText = embed.footer.text;
-  const idMatch = footerText.match(/ID:\s*(\S+)/);
+  const idMatch = footerText.match(/ID:\s*([^\s|]+)/);
   return idMatch ? idMatch[1] : null;
 };
