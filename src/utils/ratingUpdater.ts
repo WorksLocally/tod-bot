@@ -64,13 +64,17 @@ export const updateQuestionRating = async (
 
   let responseMessage: string;
   const ratingLabel = ratingType === 'upvote' ? 'Upvote' : 'Downvote';
+  const ratingPastTense: Record<typeof ratingType, string> = {
+    upvote: 'Upvoted!',
+    downvote: 'Downvoted!',
+  };
   
   if (action === 'removed') {
     responseMessage = `${ratingLabel} removed. Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   } else if (action === 'updated') {
     responseMessage = `Changed to ${ratingType}. Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   } else {
-    responseMessage = `${ratingLabel}d! Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
+    responseMessage = `${ratingPastTense[ratingType]} Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   }
 
   // Update the embed footer with new rating using Discord.js EmbedBuilder
