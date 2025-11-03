@@ -65,6 +65,8 @@ export interface BotConfig {
   clientId: string;
   guildId: string;
   approvalChannelId: string;
+  qotdChannelId: string | null;
+  qotdEnabled: boolean;
   databasePath: string;
   privilegedRoleIds: string[];
 }
@@ -74,6 +76,8 @@ const config: BotConfig = {
   clientId: resolveRequired('CLIENT_ID'),
   guildId: resolveRequired('GUILD_ID'),
   approvalChannelId: resolveRequired('APPROVAL_CHANNEL_ID'),
+  qotdChannelId: process.env.QOTD_CHANNEL_ID || null,
+  qotdEnabled: process.env.QOTD_ENABLED === 'true',
   databasePath: process.env.DATABASE_PATH
     ? path.resolve(process.cwd(), process.env.DATABASE_PATH)
     : path.join(process.cwd(), 'data', 'todbot.db'),

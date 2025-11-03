@@ -17,6 +17,8 @@ Self-hosted Discord bot that delivers curated truth and dare questions with a su
 2. Duplicate `.env.example` to `.env` and populate the following:
    - `DISCORD_TOKEN`, `CLIENT_ID`, `GUILD_ID`
    - `APPROVAL_CHANNEL_ID`
+   - `QOTD_CHANNEL_ID` - Channel ID where Question of The Day will be posted (optional)
+   - `QOTD_ENABLED` - Set to `true` to enable Question of The Day feature (defaults to `false`)
    - `ADMIN_ROLE_ID`, `MODERATOR_ROLE_ID`, `QUESTION_MASTER_ROLE_ID`
    - Optional `DATABASE_PATH` (defaults to `./data/todbot.db`)
 3. Register slash commands for your guild:
@@ -29,6 +31,23 @@ Self-hosted Discord bot that delivers curated truth and dare questions with a su
    ```
 
 The database is created automatically on first run using SQLite3 via `better-sqlite3`.
+
+## Question of The Day
+
+The bot includes an optional Question of The Day (QOTD) feature that automatically posts a truth question to a designated channel once per day at 6pm UTC.
+
+### Features:
+- **Scheduled Posting**: Automatically posts at 6pm UTC daily
+- **Truth Questions**: Posts truth questions from the queue
+- **Queue Management**: Uses the same rotation system as manual question requests
+- **Persistence**: Tracks posting history in the database
+
+### Configuration:
+1. Set `QOTD_ENABLED=true` in your `.env` file
+2. Configure `QOTD_CHANNEL_ID` with the channel where questions should be posted
+3. Restart the bot to activate the scheduler
+
+The QOTD feature will automatically start when the bot is ready and will log all posting activity.
 
 ## Slash Commands
 
@@ -54,10 +73,10 @@ The database is created automatically on first run using SQLite3 via `better-sql
 
 ## Project Structure
 
-- `src/index.ts` - Discord client bootstrap and interaction routing.
+- `src/index.ts` - Discord client bootstrap, interaction routing, and QOTD scheduler initialization.
 - `src/commands/` - Slash command handlers (truth, dare, submit, question).
 - `src/interactions/` - Button and modal handlers for user interactions.
-- `src/services/` - Business logic for questions, submissions, approvals, and similarity checking.
+- `src/services/` - Business logic for questions, submissions, approvals, similarity checking, and Question of The Day.
 - `src/handlers/` - Command and button loader modules.
 - `src/database/` - Database client and connection management.
 - `src/config/` - Environment configuration.
