@@ -5,8 +5,6 @@
  */
 
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember, User } from 'discord.js';
-import { getRatingCounts } from '../services/ratingService.js';
-import { formatNetRating } from './ratingUpdater.js';
 
 const TYPE_LABELS = {
   truth: { label: 'Truth', color: 0x2ecc71 },
@@ -23,9 +21,6 @@ interface Question {
 
 // Cache the question component buttons - they never change
 let cachedQuestionComponents: ActionRowBuilder<ButtonBuilder>[] | null = null;
-
-// Cache the rating buttons separately - they also never change
-let cachedRatingButtons: ActionRowBuilder<ButtonBuilder> | null = null;
 
 /**
  * Determines a human-friendly display name for a guild member or user.
@@ -73,15 +68,13 @@ interface BuildQuestionEmbedOptions {
  */
 export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbedOptions): EmbedBuilder => {
   const typeMeta = TYPE_LABELS[question.type] ?? TYPE_LABELS.truth;
-  const ratings = getRatingCounts(question.question_id);
-  const ratingText = formatNetRating(ratings.upvotes, ratings.downvotes);
 
   const embed = new EmbedBuilder()
     .setTitle(typeMeta.label)
     .setDescription(question.text)
     .setColor(typeMeta.color)
     .setFooter({
-      text: `ID: ${question.question_id} | Rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`,
+      text: `ID: ${question.question_id}`,
     })
     .setTimestamp(new Date());
 
@@ -99,75 +92,34 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
 };
 
 /**
- * Builds the action row containing rating buttons (upvote and downvote).
+ * Builds the action row containing Truth, Dare, and Submit Question buttons.
  * Components are cached after first creation for performance.
  *
- * @returns Action row with rating buttons (cloned from cache to prevent mutation).
- */
-const buildRatingButtons = (): ActionRowBuilder<ButtonBuilder> => {
-  // Build buttons only once and cache
-  if (!cachedRatingButtons) {
-    const upvoteButton = new ButtonBuilder()
-      .setCustomId('question_upvote')
-      .setLabel('Upvote')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('⬆️');
-
-    const downvoteButton = new ButtonBuilder()
-      .setCustomId('question_downvote')
-      .setLabel('Downvote')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('⬇️');
-
-    cachedRatingButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(upvoteButton, downvoteButton);
-  }
-  
-  // Return a clone to prevent consumers from mutating the cached instance
-  return ActionRowBuilder.from(cachedRatingButtons);
-};
-
-/**
- * Builds the action rows containing Truth, Dare, Submit Question, and rating buttons.
- * Components are cached after first creation for performance.
- *
- * @returns Action rows with interactive buttons.
+ * @returns Action row with interactive buttons.
  */
 export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => {
-  // Build components only once and cache
-  if (!cachedQuestionComponents) {
-    const truthButton = new ButtonBuilder()
-      .setCustomId('question_truth_next')
-      .setLabel('Truth')
-      .setStyle(ButtonStyle.Primary);
-
-    const dareButton = new ButtonBuilder()
-      .setCustomId('question_dare_next')
-      .setLabel('Dare')
-      .setStyle(ButtonStyle.Danger);
-
-    const submitButton = new ButtonBuilder()
-      .setCustomId('question_submit')
-      .setLabel('Submit Question')
-      .setStyle(ButtonStyle.Success);
-
-    const upvoteButton = new ButtonBuilder()
-      .setCustomId('question_upvote')
-      .setLabel('Upvote')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('⬆️');
-
-    const downvoteButton = new ButtonBuilder()
-      .setCustomId('question_downvote')
-      .setLabel('Downvote')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('⬇️');
-
-    const navigationRow = new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton);
-    const ratingRow = new ActionRowBuilder<ButtonBuilder>().addComponents(upvoteButton, downvoteButton);
-
-    cachedQuestionComponents = [navigationRow, ratingRow];
+  // Return cached components if available
+  if (cachedQuestionComponents) {
+    return cachedQuestionComponents;
   }
+
+  // Build components only once
+  const truthButton = new ButtonBuilder()
+    .setCustomId('question_truth_next')
+    .setLabel('Truth')
+    .setStyle(ButtonStyle.Primary);
+
+  const dareButton = new ButtonBuilder()
+    .setCustomId('question_dare_next')
+    .setLabel('Dare')
+    .setStyle(ButtonStyle.Danger);
+
+  const submitButton = new ButtonBuilder()
+    .setCustomId('question_submit')
+    .setLabel('Submit Question')
+    .setStyle(ButtonStyle.Success);
+
+  cachedQuestionComponents = [new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton)];
   
-  // Return clones to prevent consumers from mutating the cached instances
-  return cachedQuestionComponents.map(row => ActionRowBuilder.from(row));
+  return cachedQuestionComponents;
 };

@@ -73,23 +73,6 @@ db.exec(`
   
   CREATE INDEX IF NOT EXISTS idx_submissions_type_status
     ON submissions (type, status);
-
-  CREATE TABLE IF NOT EXISTS question_ratings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    question_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    rating INTEGER NOT NULL CHECK (rating IN (-1, 1)),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE (question_id, user_id),
-    FOREIGN KEY (question_id) REFERENCES questions(question_id) ON DELETE CASCADE
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_question_ratings_question_id
-    ON question_ratings (question_id);
-  
-  CREATE INDEX IF NOT EXISTS idx_question_ratings_user_id
-    ON question_ratings (user_id);
 `);
 
 interface IndexInfo {
