@@ -150,8 +150,20 @@ export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => 
       .setLabel('Submit Question')
       .setStyle(ButtonStyle.Success);
 
+    const upvoteButton = new ButtonBuilder()
+      .setCustomId('question_upvote')
+      .setLabel('Upvote')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('⬆️');
+
+    const downvoteButton = new ButtonBuilder()
+      .setCustomId('question_downvote')
+      .setLabel('Downvote')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('⬇️');
+
     const navigationRow = new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton);
-    const ratingRow = buildRatingButtons();
+    const ratingRow = new ActionRowBuilder<ButtonBuilder>().addComponents(upvoteButton, downvoteButton);
 
     cachedQuestionComponents = [navigationRow, ratingRow];
   }
