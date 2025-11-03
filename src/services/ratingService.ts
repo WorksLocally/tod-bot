@@ -13,7 +13,7 @@ const ratingCountsCache = new LRUCache<string, { upvotes: number; downvotes: num
 
 // Prepared statements are cached for performance
 const STATEMENTS = {
-  getExistingRating: db.prepare(
+  getUserRating: db.prepare(
     'SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?'
   ),
   deleteRating: db.prepare(
@@ -32,9 +32,6 @@ const STATEMENTS = {
     FROM question_ratings
     WHERE question_id = ?
   `),
-  getUserRating: db.prepare(
-    'SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?'
-  ),
 };
 
 /**
@@ -56,7 +53,7 @@ export const addOrUpdateRating = (
   try {
     // Use transaction to prevent race conditions when multiple users vote simultaneously
     const result = db.transaction(() => {
-      const existingRating = STATEMENTS.getExistingRating
+      const existingRating = STATEMENTS.getUserRating
         .get(questionId, userId) as { rating: number } | undefined;
 
       let action: 'added' | 'removed' | 'updated';

@@ -102,30 +102,28 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
  * Builds the action row containing rating buttons (upvote and downvote).
  * Components are cached after first creation for performance.
  *
- * @returns Action row with rating buttons.
+ * @returns Action row with rating buttons (cloned from cache to prevent mutation).
  */
 const buildRatingButtons = (): ActionRowBuilder<ButtonBuilder> => {
-  // Return cached buttons if available
-  if (cachedRatingButtons) {
-    return cachedRatingButtons;
+  // Build buttons only once and cache
+  if (!cachedRatingButtons) {
+    const upvoteButton = new ButtonBuilder()
+      .setCustomId('question_upvote')
+      .setLabel('Upvote')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('⬆️');
+
+    const downvoteButton = new ButtonBuilder()
+      .setCustomId('question_downvote')
+      .setLabel('Downvote')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('⬇️');
+
+    cachedRatingButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(upvoteButton, downvoteButton);
   }
-
-  // Build buttons only once
-  const upvoteButton = new ButtonBuilder()
-    .setCustomId('question_upvote')
-    .setLabel('Upvote')
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji('⬆️');
-
-  const downvoteButton = new ButtonBuilder()
-    .setCustomId('question_downvote')
-    .setLabel('Downvote')
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji('⬇️');
-
-  cachedRatingButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(upvoteButton, downvoteButton);
   
-  return cachedRatingButtons;
+  // Return a clone to prevent consumers from mutating the cached instance
+  return ActionRowBuilder.from(cachedRatingButtons);
 };
 
 /**
@@ -135,31 +133,29 @@ const buildRatingButtons = (): ActionRowBuilder<ButtonBuilder> => {
  * @returns Action rows with interactive buttons.
  */
 export const buildQuestionComponents = (): ActionRowBuilder<ButtonBuilder>[] => {
-  // Return cached components if available
-  if (cachedQuestionComponents) {
-    return cachedQuestionComponents;
+  // Build components only once and cache
+  if (!cachedQuestionComponents) {
+    const truthButton = new ButtonBuilder()
+      .setCustomId('question_truth_next')
+      .setLabel('Truth')
+      .setStyle(ButtonStyle.Primary);
+
+    const dareButton = new ButtonBuilder()
+      .setCustomId('question_dare_next')
+      .setLabel('Dare')
+      .setStyle(ButtonStyle.Danger);
+
+    const submitButton = new ButtonBuilder()
+      .setCustomId('question_submit')
+      .setLabel('Submit Question')
+      .setStyle(ButtonStyle.Success);
+
+    const navigationRow = new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton);
+    const ratingRow = buildRatingButtons();
+
+    cachedQuestionComponents = [navigationRow, ratingRow];
   }
-
-  // Build components only once
-  const truthButton = new ButtonBuilder()
-    .setCustomId('question_truth_next')
-    .setLabel('Truth')
-    .setStyle(ButtonStyle.Primary);
-
-  const dareButton = new ButtonBuilder()
-    .setCustomId('question_dare_next')
-    .setLabel('Dare')
-    .setStyle(ButtonStyle.Danger);
-
-  const submitButton = new ButtonBuilder()
-    .setCustomId('question_submit')
-    .setLabel('Submit Question')
-    .setStyle(ButtonStyle.Success);
-
-  const navigationRow = new ActionRowBuilder<ButtonBuilder>().addComponents(truthButton, dareButton, submitButton);
-  const ratingRow = buildRatingButtons();
-
-  cachedQuestionComponents = [navigationRow, ratingRow];
   
-  return cachedQuestionComponents;
+  // Return clones to prevent consumers from mutating the cached instances
+  return cachedQuestionComponents.map(row => ActionRowBuilder.from(row));
 };
