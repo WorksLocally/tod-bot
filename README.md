@@ -34,13 +34,13 @@ The database is created automatically on first run using SQLite3 via `better-sql
 
 ## Question of The Day
 
-The bot includes an optional Question of The Day (QOTD) feature that automatically posts a question to a designated channel once per day at 6pm UTC.
+The bot includes an optional Question of The Day (QOTD) feature that automatically posts a truth question to a designated channel once per day at 6pm UTC.
 
 ### Features:
 - **Scheduled Posting**: Automatically posts at 6pm UTC daily
-- **Alternating Types**: Alternates between truth and dare questions
+- **Truth Questions**: Posts truth questions from the queue
 - **Queue Management**: Uses the same rotation system as manual question requests
-- **Persistence**: Tracks the last posted question type in the database
+- **Persistence**: Tracks posting history in the database
 
 ### Configuration:
 1. Set `QOTD_ENABLED=true` in your `.env` file
