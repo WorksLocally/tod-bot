@@ -26,6 +26,14 @@ export const formatNetRating = (upvotes: number, downvotes: number): string => {
 };
 
 /**
+ * Past tense forms for rating types.
+ */
+const RATING_PAST_TENSE: Record<'upvote' | 'downvote', string> = {
+  upvote: 'Upvoted!',
+  downvote: 'Downvoted!',
+};
+
+/**
  * Updates the question embed footer with new rating information.
  *
  * @param interaction - The button interaction.
@@ -64,17 +72,13 @@ export const updateQuestionRating = async (
 
   let responseMessage: string;
   const ratingLabel = ratingType === 'upvote' ? 'Upvote' : 'Downvote';
-  const ratingPastTense: Record<typeof ratingType, string> = {
-    upvote: 'Upvoted!',
-    downvote: 'Downvoted!',
-  };
   
   if (action === 'removed') {
     responseMessage = `${ratingLabel} removed. Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   } else if (action === 'updated') {
     responseMessage = `Changed to ${ratingType}. Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   } else {
-    responseMessage = `${ratingPastTense[ratingType]} Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
+    responseMessage = `${RATING_PAST_TENSE[ratingType]} Current rating: ${ratingText} (↑${ratings.upvotes} ↓${ratings.downvotes})`;
   }
 
   // Update the embed footer with new rating using Discord.js EmbedBuilder
