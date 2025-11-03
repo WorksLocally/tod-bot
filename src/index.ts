@@ -6,6 +6,7 @@
  */
 
 import { Client, Collection, GatewayIntentBits, Partials, Events, MessageFlags } from 'discord.js';
+import cron from 'node-cron';
 import config from './config/env.js';
 import { loadCommandModules } from './handlers/commandLoader.js';
 import type { CommandModule } from './handlers/commandLoader.js';
@@ -14,6 +15,7 @@ import type { ButtonHandler } from './handlers/buttonLoader.js';
 import logger from './utils/logger.js';
 import { handleRejectModalSubmit } from './interactions/modals/approvalRejectModal.js';
 import { handleQuestionSubmitModal } from './interactions/modals/questionSubmitModal.js';
+import { postQuestionOfTheDay } from './services/questionOfTheDayService.js';
 
 // Extend the Client type to include our custom properties
 declare module 'discord.js' {
@@ -63,6 +65,9 @@ const initializeClient = async (): Promise<void> => {
    */
   client.once(Events.ClientReady, (readyClient) => {
     logger.info(`Logged in as ${readyClient.user.tag}`);
+
+    // Initialize Question of The Day scheduler
+    initializeQotdScheduler(readyClient);
   });
 
   /**
@@ -178,6 +183,38 @@ const initializeClient = async (): Promise<void> => {
       logger.error('Failed to login to Discord', { error });
       process.exitCode = 1;
     });
+};
+
+/**
+ * Initializes the Question of The Day scheduler.
+ * Posts a question daily at 6pm UTC, alternating between truth and dare.
+ *
+ * @param client - The Discord client instance.
+ */
+const initializeQotdScheduler = (client: Client): void => {
+  if (!config.qotdEnabled) {
+    logger.info('Question of The Day feature is disabled');
+    return;
+  }
+
+  if (!config.qotdChannelId) {
+    logger.warn('Question of The Day channel ID is not configured');
+    return;
+  }
+
+  // Schedule QOTD to post at 6pm UTC daily (cron: '0 18 * * *')
+  cron.schedule('0 18 * * *', async () => {
+    logger.info('Running scheduled Question of The Day post');
+    try {
+      await postQuestionOfTheDay(client);
+    } catch (error) {
+      logger.error('Failed to post scheduled Question of The Day', { error });
+    }
+  }, {
+    timezone: 'UTC'
+  });
+
+  logger.info('Question of The Day scheduler initialized (daily at 6pm UTC)');
 };
 
 // Start the bot

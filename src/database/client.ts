@@ -50,6 +50,12 @@ db.exec(`
     last_position INTEGER NOT NULL DEFAULT 0
   );
 
+  CREATE TABLE IF NOT EXISTS qotd_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    last_posted_at TEXT,
+    last_posted_type TEXT CHECK (last_posted_type IN ('truth','dare'))
+  );
+
   CREATE TABLE IF NOT EXISTS submissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     submission_id TEXT NOT NULL UNIQUE,
