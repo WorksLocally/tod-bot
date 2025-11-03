@@ -1,6 +1,6 @@
 /**
  * Service for managing Question of The Day (QOTD) functionality.
- * Handles posting scheduled daily questions alternating between truth and dare.
+ * Handles posting scheduled daily truth questions.
  *
  * @module src/services/questionOfTheDayService
  */
@@ -13,19 +13,16 @@ import config from '../config/env.js';
 
 /**
  * Updates the QOTD state in the database.
- *
- * @param type - The type of question that was posted ('truth' or 'dare').
  */
-const updateQotdState = (type: 'truth' | 'dare'): void => {
+const updateQotdState = (): void => {
   const stmt = db.prepare(`
-    INSERT INTO qotd_state (id, last_posted_at, last_posted_type)
-    VALUES (1, datetime('now'), ?)
+    INSERT INTO qotd_state (id, last_posted_at)
+    VALUES (1, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
-      last_posted_at = datetime('now'),
-      last_posted_type = ?
+      last_posted_at = datetime('now')
   `);
 
-  stmt.run(type, type);
+  stmt.run();
 };
 
 /**
@@ -80,7 +77,7 @@ export const postQuestionOfTheDay = async (client: Client): Promise<void> => {
     await (channel as TextChannel).send({ embeds: [embed] });
 
     // Update the state
-    updateQotdState(nextType);
+    updateQotdState();
 
     logger.info(`Posted QOTD: truth question ${question.question_id}`);
   } catch (error) {

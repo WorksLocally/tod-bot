@@ -187,7 +187,7 @@ const initializeClient = async (): Promise<void> => {
 
 /**
  * Initializes the Question of The Day scheduler.
- * Posts a question daily at 6pm UTC, alternating between truth and dare.
+ * Posts a truth question daily at 6pm UTC.
  *
  * @param client - The Discord client instance.
  */

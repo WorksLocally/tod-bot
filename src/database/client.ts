@@ -52,8 +52,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS qotd_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    last_posted_at TEXT,
-    last_posted_type TEXT CHECK (last_posted_type IN ('truth','dare'))
+    last_posted_at TEXT
   );
 
   CREATE TABLE IF NOT EXISTS submissions (
