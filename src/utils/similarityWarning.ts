@@ -69,14 +69,12 @@ export const buildSimilarityWarningButtons = (
   const submitButton = new ButtonBuilder()
     .setCustomId(`submit_confirm:${pendingId}`)
     .setLabel('Submit Anyway')
-    .setStyle(ButtonStyle.Success)
-    .setEmoji('✅');
+    .setStyle(ButtonStyle.Success);
 
   const cancelButton = new ButtonBuilder()
     .setCustomId('submit_cancel')
     .setLabel('Cancel')
-    .setStyle(ButtonStyle.Secondary)
-    .setEmoji('❌');
+    .setStyle(ButtonStyle.Secondary);
 
   return new ActionRowBuilder<ButtonBuilder>().addComponents(submitButton, cancelButton);
 };
