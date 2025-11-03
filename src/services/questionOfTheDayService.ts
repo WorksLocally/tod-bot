@@ -73,12 +73,11 @@ export const postQuestionOfTheDay = async (client: Client): Promise<void> => {
       .setFooter({ text: `Question ID: ${question.question_id}` })
       .setTimestamp();
 
-    // Post to channel
-    await (channel as TextChannel).send({ embeds: [embed] });
-
     // Update the state
     updateQotdState();
 
+    // Post to channel
+    await (channel as TextChannel).send({ embeds: [embed] });
     logger.info(`Posted QOTD: truth question ${question.question_id}`);
   } catch (error) {
     logger.error('Failed to post Question of The Day', { error });
