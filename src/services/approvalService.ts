@@ -196,14 +196,12 @@ const buildApprovalButtons = (status: SubmissionStatus): ActionRowBuilder<Button
   const approveButton = new ButtonBuilder()
     .setCustomId('approval_approve')
     .setLabel('Approve')
-    .setStyle(ButtonStyle.Success)
-    .setEmoji('✅');
+    .setStyle(ButtonStyle.Success);
 
   const rejectButton = new ButtonBuilder()
     .setCustomId('approval_reject')
     .setLabel('Reject')
-    .setStyle(ButtonStyle.Danger)
-    .setEmoji('❌');
+    .setStyle(ButtonStyle.Danger);
 
   const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(approveButton, rejectButton);
 
