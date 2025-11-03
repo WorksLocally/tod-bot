@@ -1112,7 +1112,7 @@ logger.info('DEBUG: Function called', {
 });
 
 // Or use console.log for immediate output (remove before commit!)
-console.log('DEBUG:', { interaction.customId, interaction.user.id });
+console.log('DEBUG:', { customId: interaction.customId, userId: interaction.user.id });
 ```
 
 **Change Log Level**:
