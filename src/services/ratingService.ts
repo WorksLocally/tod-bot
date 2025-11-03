@@ -11,6 +11,32 @@ import { LRUCache } from '../utils/lruCache.js';
 // Cache for rating counts to reduce database queries
 const ratingCountsCache = new LRUCache<string, { upvotes: number; downvotes: number }>(500);
 
+// Prepared statements are cached for performance
+const STATEMENTS = {
+  getExistingRating: db.prepare(
+    'SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?'
+  ),
+  deleteRating: db.prepare(
+    'DELETE FROM question_ratings WHERE question_id = ? AND user_id = ?'
+  ),
+  updateRating: db.prepare(
+    'UPDATE question_ratings SET rating = ?, updated_at = datetime("now") WHERE question_id = ? AND user_id = ?'
+  ),
+  insertRating: db.prepare(
+    'INSERT INTO question_ratings (question_id, user_id, rating) VALUES (?, ?, ?)'
+  ),
+  getRatingCounts: db.prepare(`
+    SELECT 
+      SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as upvotes,
+      SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END) as downvotes
+    FROM question_ratings
+    WHERE question_id = ?
+  `),
+  getUserRating: db.prepare(
+    'SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?'
+  ),
+};
+
 /**
  * Adds or updates a rating for a question by a user.
  * If the user has already rated the question with the same rating, it removes the rating.
@@ -28,46 +54,39 @@ export const addOrUpdateRating = (
   rating: 1 | -1
 ): 'added' | 'removed' | 'updated' => {
   try {
-    const existingRating = db
-      .prepare('SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?')
-      .get(questionId, userId) as { rating: number } | undefined;
+    // Use transaction to prevent race conditions when multiple users vote simultaneously
+    const result = db.transaction(() => {
+      const existingRating = STATEMENTS.getExistingRating
+        .get(questionId, userId) as { rating: number } | undefined;
 
-    let action: 'added' | 'removed' | 'updated';
+      let action: 'added' | 'removed' | 'updated';
 
-    if (existingRating) {
-      if (existingRating.rating === rating) {
-        // Same rating - remove it (toggle off)
-        db.prepare('DELETE FROM question_ratings WHERE question_id = ? AND user_id = ?').run(
-          questionId,
-          userId
-        );
-        logger.info('Removed question rating', { questionId, userId, removedRating: rating });
-        action = 'removed';
+      if (existingRating) {
+        if (existingRating.rating === rating) {
+          // Same rating - remove it (toggle off)
+          STATEMENTS.deleteRating.run(questionId, userId);
+          logger.info('Removed question rating', { questionId, userId, removedRating: rating });
+          action = 'removed';
+        } else {
+          // Different rating - update it
+          STATEMENTS.updateRating.run(rating, questionId, userId);
+          logger.info('Updated question rating', { questionId, userId, rating });
+          action = 'updated';
+        }
       } else {
-        // Different rating - update it
-        db.prepare('UPDATE question_ratings SET rating = ?, updated_at = datetime("now") WHERE question_id = ? AND user_id = ?').run(
-          rating,
-          questionId,
-          userId
-        );
-        logger.info('Updated question rating', { questionId, userId, rating });
-        action = 'updated';
+        // No existing rating - add it
+        STATEMENTS.insertRating.run(questionId, userId, rating);
+        logger.info('Added question rating', { questionId, userId, rating });
+        action = 'added';
       }
-    } else {
-      // No existing rating - add it
-      db.prepare('INSERT INTO question_ratings (question_id, user_id, rating) VALUES (?, ?, ?)').run(
-        questionId,
-        userId,
-        rating
-      );
-      logger.info('Added question rating', { questionId, userId, rating });
-      action = 'added';
-    }
+
+      return action;
+    })();
 
     // Invalidate cache for this question
     ratingCountsCache.delete(questionId);
 
-    return action;
+    return result;
   } catch (error) {
     logger.error('Error adding/updating rating', { error, questionId, userId, rating });
     throw error;
@@ -91,14 +110,7 @@ export const getRatingCounts = (
   }
 
   try {
-    const result = db
-      .prepare(`
-        SELECT 
-          SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as upvotes,
-          SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END) as downvotes
-        FROM question_ratings
-        WHERE question_id = ?
-      `)
+    const result = STATEMENTS.getRatingCounts
       .get(questionId) as { upvotes: number | null; downvotes: number | null } | undefined;
 
     const counts = {
@@ -125,8 +137,7 @@ export const getRatingCounts = (
  */
 export const getUserRating = (questionId: string, userId: string): 1 | -1 | null => {
   try {
-    const result = db
-      .prepare('SELECT rating FROM question_ratings WHERE question_id = ? AND user_id = ?')
+    const result = STATEMENTS.getUserRating
       .get(questionId, userId) as { rating: number } | undefined;
 
     return result ? (result.rating as 1 | -1) : null;
