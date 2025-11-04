@@ -35,19 +35,27 @@ export const data = new SlashCommandBuilder()
  * Bot replies with: An embed showing a dare question with interactive buttons
  */
 export const execute = async (interaction: ChatInputCommandInteraction): Promise<void> => {
+  logger.debug('Dare command invoked', {
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
+  });
+
   // Check rate limit
   if (questionRateLimiter.isRateLimited(interaction.user.id)) {
     const timeUntilReset = questionRateLimiter.getTimeUntilReset(interaction.user.id);
     const secondsRemaining = Math.ceil(timeUntilReset / 1000);
-    
+
     await interaction.reply({
       content: `You're requesting questions too quickly. Please wait ${secondsRemaining} second${secondsRemaining !== 1 ? 's' : ''} before trying again.`,
       flags: MessageFlags.Ephemeral,
     });
-    
-    logger.info('User rate limited on dare command', {
+
+    logger.warn('User rate limited on dare command', {
       userId: interaction.user.id,
+      guildId: interaction.guildId,
       timeUntilReset,
+      secondsRemaining,
     });
     return;
   }
@@ -55,6 +63,10 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
   const question = getNextQuestion('dare');
 
   if (!question) {
+    logger.warn('No dare questions available when requested', {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
     await interaction.reply({
       content: 'There are no dare questions available yet.',
       flags: MessageFlags.Ephemeral,
@@ -62,14 +74,36 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  const embed = buildQuestionEmbed({
-    question,
-    requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
+  logger.info('Dare question served', {
+    questionId: question.question_id,
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+    channelId: interaction.channelId,
   });
 
-  await interaction.reply({
-    embeds: [embed],
-    components: buildQuestionComponents(),
-    allowedMentions: { parse: [] },
-  });
+  try {
+    const embed = buildQuestionEmbed({
+      question,
+      requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
+    });
+
+    await interaction.reply({
+      embeds: [embed],
+      components: buildQuestionComponents(),
+      allowedMentions: { parse: [] },
+    });
+
+    logger.debug('Dare question reply sent successfully', {
+      questionId: question.question_id,
+      userId: interaction.user.id,
+    });
+  } catch (error) {
+    logger.error('Failed to send dare question reply', {
+      error,
+      questionId: question.question_id,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
+    throw error;
+  }
 };

@@ -8,6 +8,7 @@ import { EmbedBuilder, MessageFlags, ChatInputCommandInteraction, GuildMember } 
 import { hasPrivilegedRole } from '../../utils/permissions.js';
 import type { BotConfig } from '../../config/env.js';
 import type { StoredQuestion } from '../../services/questionService.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Verifies whether the invoking member has permission to run moderation commands.
@@ -33,9 +34,21 @@ export const ensurePrivileged = async (
   interaction: ChatInputCommandInteraction,
   config: BotConfig
 ): Promise<boolean> => {
-  if (hasPrivilegedRole(interaction.member as GuildMember | null, config.privilegedRoleIds)) {
+  const hasPermission = hasPrivilegedRole(interaction.member as GuildMember | null, config.privilegedRoleIds);
+
+  if (hasPermission) {
+    logger.debug('User has privileged role for question management', {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
     return true;
   }
+
+  logger.warn('User denied access to question management (insufficient permissions)', {
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+    username: interaction.user.username,
+  });
 
   await interaction.reply({
     content: 'You do not have permission to manage questions.',
