@@ -109,58 +109,53 @@ export const createSubmission = ({ type, text, userId, guildId, approvalChannelI
   let inserted = false;
   let retryCount = 0;
 
-  try {
-    while (!inserted) {
-      submissionId = generateSubmissionId();
-      try {
-        STATEMENTS.insertSubmission.run(
-          submissionId,
+  while (!inserted) {
+    submissionId = generateSubmissionId();
+    try {
+      STATEMENTS.insertSubmission.run(
+        submissionId,
+        type,
+        sanitizedText,
+        userId,
+        guildId || null,
+        'pending',
+        approvalChannelId || null
+      );
+      inserted = true;
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+        logger.error('Failed to insert submission due to database error', {
+          error,
           type,
-          sanitizedText,
           userId,
-          guildId || null,
-          'pending',
-          approvalChannelId || null
-        );
-        inserted = true;
-      } catch (error) {
-        if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
-          logger.error('Failed to insert submission due to database error', {
-            error,
-            type,
-            userId,
-            guildId
-          });
-          throw error;
-        }
-        retryCount++;
-        if (retryCount > 10) {
-          logger.error('Failed to generate unique submission ID after multiple attempts', {
-            type,
-            userId,
-            retryCount
-          });
-          throw new Error('Failed to generate unique submission ID');
-        }
+          guildId
+        });
+        throw error;
+      }
+      retryCount++;
+      if (retryCount > 10) {
+        logger.error('Failed to generate unique submission ID after multiple attempts', {
+          type,
+          userId,
+          retryCount
+        });
+        throw new Error('Failed to generate unique submission ID');
       }
     }
-
-    const submission = STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord;
-
-    logger.info('Successfully created submission', {
-      submissionId,
-      type,
-      userId,
-      guildId,
-      approvalChannelId,
-      textLength: sanitizedText.length
-    });
-
-    return submission;
-  } catch (error) {
-    logger.error('Failed to create submission', { error, type, userId, guildId });
-    throw error;
   }
+
+  const submission = STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord;
+
+  logger.info('Successfully created submission', {
+    submissionId,
+    type,
+    userId,
+    guildId,
+    approvalChannelId,
+    textLength: sanitizedText.length
+  });
+
+  return submission;
 };
 
 interface UpdateSubmissionStatusParams {
