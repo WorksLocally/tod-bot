@@ -239,7 +239,7 @@ const initializeQotdScheduler = (client: Client): void => {
       logger.error('Failed to post scheduled Question of The Day', { error });
     }
   }, {
-    timezone: 'UTC'
+    timezone: 'Etc/UTC'
   });
 
   logger.info('Question of The Day scheduler initialized (daily at 6pm UTC)');
