@@ -238,7 +238,7 @@ interface EditQuestionParams {
  * @param params - Update payload containing question ID and new text.
  * @param params.questionId - 8-character question identifier.
  * @param params.text - New question text (will be sanitized, max 4000 chars).
- * @returns Count of rows affected (0 if question not found, 1 if updated).
+ * @returns The updated question record if found and updated, null otherwise.
  * @throws {Error} If question text is empty after sanitization.
  *
  * @example
@@ -247,10 +247,12 @@ interface EditQuestionParams {
  *   questionId: '8A3F2D1C',
  *   text: 'What is your greatest accomplishment?'
  * });
- * console.log(updated); // 1
+ * if (updated) {
+ *   console.log('Updated:', updated.text);
+ * }
  * ```
  */
-export const editQuestion = ({ questionId, text }: EditQuestionParams): number => {
+export const editQuestion = ({ questionId, text }: EditQuestionParams): StoredQuestion | null => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
     logger.error('Attempted to edit question with empty text after sanitization', {
@@ -267,18 +269,19 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
     questionCache.delete(questionId);
 
     if (info.changes > 0) {
+      const updated = getQuestionById(questionId);
       logger.info('Successfully edited question', {
         questionId,
         textLength: sanitizedText.length,
         rowsAffected: info.changes
       });
+      return updated || null;
     } else {
       logger.warn('Attempted to edit non-existent question', {
         questionId
       });
+      return null;
     }
-
-    return info.changes;
   } catch (error) {
     logger.error('Failed to edit question', { error, questionId });
     throw error;
