@@ -44,19 +44,31 @@ export const executeEdit = async (
   }
 
   try {
-    questionService.editQuestion({ questionId, text: newText });
-    const updated = questionService.getQuestionById(questionId);
+    const updated = questionService.editQuestion({ questionId, text: newText });
+
+    if (!updated) {
+      logger.warn('Question not found during edit operation', {
+        questionId,
+        userId: interaction.user.id,
+        guildId: interaction.guildId
+      });
+      await interaction.reply({
+        content: `Question \`${questionId}\` was not found.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
 
     logger.info('Question edited via command', {
       questionId,
-      type: updated?.type,
+      type: updated.type,
       userId: interaction.user.id,
       guildId: interaction.guildId
     });
 
     await interaction.reply({
       content: `Question \`${questionId}\` has been updated.`,
-      embeds: [buildQuestionDetailEmbed(updated!)],
+      embeds: [buildQuestionDetailEmbed(updated)],
       flags: MessageFlags.Ephemeral,
       allowedMentions: { parse: [] },
     });

@@ -83,7 +83,7 @@ const STATEMENTS = {
     'INSERT INTO questions (question_id, type, text, created_by, position) VALUES (?, ?, ?, ?, ?)'
   ),
   updateQuestion: db.prepare(
-    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ?"
+    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ? RETURNING question_id, type, text, position, created_at, updated_at, created_by"
   ),
   deleteQuestion: db.prepare('DELETE FROM questions WHERE question_id = ?'),
   getQuestionById: db.prepare(
@@ -160,71 +160,66 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
     throw new Error('Question text cannot be empty.');
   }
 
-  try {
-    const insert = db.transaction(() => {
-      const maxPosition = (STATEMENTS.getMaxPosition.get(questionType) as MaxPositionResult).maxPosition;
-      const position = maxPosition + 1;
+  const insert = db.transaction(() => {
+    const maxPosition = (STATEMENTS.getMaxPosition.get(questionType) as MaxPositionResult).maxPosition;
+    const position = maxPosition + 1;
 
-      let questionId: string = '';
-      let inserted = false;
-      let retryCount = 0;
+    let questionId: string = '';
+    let inserted = false;
+    let retryCount = 0;
 
-      while (!inserted) {
-        questionId = generateQuestionId();
-        try {
-          STATEMENTS.insertQuestion.run(
-            questionId,
-            questionType,
-            sanitizedText,
-            createdBy || null,
-            position
-          );
-          inserted = true;
-        } catch (error) {
-          if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
-            logger.error('Failed to insert question due to database error', {
-              error,
-              type: questionType,
-              position,
-              createdBy
-            });
-            throw error;
-          }
-          retryCount++;
-          if (retryCount > 10) {
-            logger.error('Failed to generate unique question ID after multiple attempts', {
-              type: questionType,
-              retryCount
-            });
-            throw new Error('Failed to generate unique question ID');
-          }
+    while (!inserted) {
+      questionId = generateQuestionId();
+      try {
+        STATEMENTS.insertQuestion.run(
+          questionId,
+          questionType,
+          sanitizedText,
+          createdBy || null,
+          position
+        );
+        inserted = true;
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+          logger.error('Failed to insert question due to database error', {
+            error,
+            type: questionType,
+            position,
+            createdBy
+          });
+          throw error;
+        }
+        retryCount++;
+        if (retryCount > 10) {
+          logger.error('Failed to generate unique question ID after multiple attempts', {
+            type: questionType,
+            retryCount
+          });
+          throw new Error('Failed to generate unique question ID');
         }
       }
+    }
 
-      const result = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
+    const result = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
 
-      // Cache the newly added question
-      questionCache.set(questionId, result);
+    // Cache the newly added question
+    questionCache.set(questionId, result);
 
-      // Invalidate next question cache for this type since we added a new one
-      nextQuestionCache.delete(questionType);
+    // Invalidate next question cache for this type since we added a new one
+    nextQuestionCache.delete(questionType);
 
-      logger.info('Successfully added new question', {
-        questionId,
-        type: questionType,
-        position: result.position,
-        createdBy,
-        textLength: sanitizedText.length
-      });
-
-      return result;
+    logger.info('Successfully added new question', {
+      questionId,
+      type: questionType,
+      position: result.position,
+      createdBy,
+      textLength: sanitizedText.length
     });
 
-    return insert();
-  } catch (error) {
-    logger.error('Failed to add question', { error, type: questionType, createdBy });
-    throw error;
-  }
+    return result;
+  });
+
+  return insert();
 };
 
 interface EditQuestionParams {
@@ -243,7 +238,7 @@ interface EditQuestionParams {
  * @param params - Update payload containing question ID and new text.
  * @param params.questionId - 8-character question identifier.
  * @param params.text - New question text (will be sanitized, max 4000 chars).
- * @returns Count of rows affected (0 if question not found, 1 if updated).
+ * @returns The updated question record if found and updated, null otherwise.
  * @throws {Error} If question text is empty after sanitization.
  *
  * @example
@@ -252,10 +247,12 @@ interface EditQuestionParams {
  *   questionId: '8A3F2D1C',
  *   text: 'What is your greatest accomplishment?'
  * });
- * console.log(updated); // 1
+ * if (updated) {
+ *   console.log('Updated:', updated.text);
+ * }
  * ```
  */
-export const editQuestion = ({ questionId, text }: EditQuestionParams): number => {
+export const editQuestion = ({ questionId, text }: EditQuestionParams): StoredQuestion | null => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
     logger.error('Attempted to edit question with empty text after sanitization', {
@@ -266,24 +263,26 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
   }
 
   try {
-    const info = STATEMENTS.updateQuestion.run(sanitizedText, questionId);
+    // Note: Using `.get()` for UPDATE ... RETURNING is intentional.
+    // SQLite's RETURNING clause allows UPDATE to return the updated row as an object,
+    // or `undefined` if no row matched. This is non-obvious, so we document it here.
+    const updated = STATEMENTS.updateQuestion.get(sanitizedText, questionId) as StoredQuestion | undefined;
 
-    // Invalidate cache for this question
-    questionCache.delete(questionId);
+    if (updated) {
+      // Invalidate cache for this question
+      questionCache.delete(questionId);
 
-    if (info.changes > 0) {
       logger.info('Successfully edited question', {
         questionId,
-        textLength: sanitizedText.length,
-        rowsAffected: info.changes
+        textLength: sanitizedText.length
       });
+      return updated;
     } else {
       logger.warn('Attempted to edit non-existent question', {
         questionId
       });
+      return null;
     }
-
-    return info.changes;
   } catch (error) {
     logger.error('Failed to edit question', { error, questionId });
     throw error;
@@ -298,9 +297,6 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
  */
 export const deleteQuestion = (questionId: string): number => {
   try {
-    // Get question details before deletion for logging
-    const question = getQuestionById(questionId);
-
     const info = STATEMENTS.deleteQuestion.run(questionId);
 
     // Remove from cache
@@ -308,9 +304,7 @@ export const deleteQuestion = (questionId: string): number => {
 
     if (info.changes > 0) {
       logger.info('Successfully deleted question', {
-        questionId,
-        type: question?.type,
-        position: question?.position
+        questionId
       });
     } else {
       logger.warn('Attempted to delete non-existent question', {
