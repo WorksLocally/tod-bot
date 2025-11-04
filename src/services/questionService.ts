@@ -83,7 +83,7 @@ const STATEMENTS = {
     'INSERT INTO questions (question_id, type, text, created_by, position) VALUES (?, ?, ?, ?, ?)'
   ),
   updateQuestion: db.prepare(
-    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ?"
+    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ? RETURNING question_id, type, text, position, created_at, updated_at, created_by"
   ),
   deleteQuestion: db.prepare('DELETE FROM questions WHERE question_id = ?'),
   getQuestionById: db.prepare(
@@ -263,19 +263,17 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): StoredQu
   }
 
   try {
-    const info = STATEMENTS.updateQuestion.run(sanitizedText, questionId);
+    const updated = STATEMENTS.updateQuestion.get(sanitizedText, questionId) as StoredQuestion | undefined;
 
-    // Invalidate cache for this question
-    questionCache.delete(questionId);
+    if (updated) {
+      // Invalidate cache for this question
+      questionCache.delete(questionId);
 
-    if (info.changes > 0) {
-      const updated = getQuestionById(questionId);
       logger.info('Successfully edited question', {
         questionId,
-        textLength: sanitizedText.length,
-        rowsAffected: info.changes
+        textLength: sanitizedText.length
       });
-      return updated || null;
+      return updated;
     } else {
       logger.warn('Attempted to edit non-existent question', {
         questionId
