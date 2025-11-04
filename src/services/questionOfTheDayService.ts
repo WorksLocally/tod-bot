@@ -46,9 +46,9 @@ const updateQotdState = (): void => {
  * Uses the same rotation system as manual /truth commands.
  *
  * @param client - The Discord client instance for channel access.
- * @returns Promise that resolves when the question is posted successfully.
- * @throws {Error} If QOTD channel is not found or not a text channel.
- * @throws {Error} If posting to Discord fails.
+ * @returns Promise that resolves when the question is posted successfully, or rejects with an Error if posting fails.
+ * @throws {Error} If QOTD channel is not found or not a text channel. (The returned promise will be rejected with this error.)
+ * @throws {Error} If posting to Discord fails. (The returned promise will be rejected with this error.)
  *
  * @example
  * ```typescript
