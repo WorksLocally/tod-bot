@@ -22,9 +22,20 @@ const nextQuestionCache = new LRUCache<QuestionType, QuestionForRotation>(50);
 /**
  * Normalises and validates a provided question type value.
  *
- * @param type - Raw question type input.
- * @returns Normalised question type.
- * @throws If the type value is unsupported.
+ * This function ensures type safety by validating and normalising user input
+ * to prevent injection of invalid question types into the database.
+ *
+ * @param type - Raw question type input from user or API.
+ * @returns Normalised question type ('truth' or 'dare').
+ * @throws {Error} If the type is not a string.
+ * @throws {Error} If the type is not 'truth' or 'dare' (case-insensitive).
+ *
+ * @example
+ * ```typescript
+ * normalizeType('TRUTH'); // returns 'truth'
+ * normalizeType('dare');  // returns 'dare'
+ * normalizeType('invalid'); // throws Error
+ * ```
  */
 const normalizeType = (type: string): QuestionType => {
   if (typeof type !== 'string') {
@@ -106,8 +117,35 @@ interface AddQuestionParams {
 /**
  * Inserts a new question at the end of its type list and returns the stored record.
  *
- * @param params - Question attributes.
- * @returns Newly inserted question.
+ * This function performs the following operations within a database transaction:
+ * 1. Validates and sanitizes the input text (max 4000 characters)
+ * 2. Generates a unique 8-character alphanumeric ID
+ * 3. Determines the next position in the rotation queue
+ * 4. Inserts the question into the database
+ * 5. Caches the question for future retrieval
+ *
+ * Security: All text input is sanitized to remove control characters and prevent
+ * injection attacks. Prepared statements are used for database operations.
+ *
+ * @param params - Question attributes including type, text, and optional creator ID.
+ * @param params.type - Question type ('truth' or 'dare', case-insensitive).
+ * @param params.text - Question text content (will be sanitized, max 4000 chars).
+ * @param params.createdBy - Optional Discord user ID of the creator.
+ * @returns Newly inserted question with generated ID and position.
+ * @throws {Error} If question text is empty after sanitization.
+ * @throws {Error} If question type is invalid.
+ * @throws {Error} If database insertion fails.
+ *
+ * @example
+ * ```typescript
+ * const question = addQuestion({
+ *   type: 'truth',
+ *   text: 'What is your biggest fear?',
+ *   createdBy: '123456789012345678'
+ * });
+ * console.log(question.question_id); // '8A3F2D1C'
+ * console.log(question.position); // 42
+ * ```
  */
 export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): StoredQuestion => {
   const questionType = normalizeType(type);
@@ -163,8 +201,25 @@ interface EditQuestionParams {
 /**
  * Updates the text of a stored question.
  *
- * @param params - Update payload.
- * @returns Count of rows affected.
+ * The question text is sanitized before updating, and the cache is invalidated
+ * to ensure subsequent reads retrieve the updated version.
+ *
+ * Security: Input is sanitized to prevent injection attacks.
+ *
+ * @param params - Update payload containing question ID and new text.
+ * @param params.questionId - 8-character question identifier.
+ * @param params.text - New question text (will be sanitized, max 4000 chars).
+ * @returns Count of rows affected (0 if question not found, 1 if updated).
+ * @throws {Error} If question text is empty after sanitization.
+ *
+ * @example
+ * ```typescript
+ * const updated = editQuestion({
+ *   questionId: '8A3F2D1C',
+ *   text: 'What is your greatest accomplishment?'
+ * });
+ * console.log(updated); // 1
+ * ```
  */
 export const editQuestion = ({ questionId, text }: EditQuestionParams): number => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
@@ -234,8 +289,26 @@ export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
 /**
  * Retrieves the next question in rotation for the provided type, wrapping around when necessary.
  *
- * @param type - Question type to fetch.
- * @returns The next question or null if none exist.
+ * This function implements a simple round-robin rotation system:
+ * 1. Fetches the last served position from rotation_state table
+ * 2. Queries for the next question with position > last_position
+ * 3. If no question found, wraps around to the first question
+ * 4. Updates rotation_state with the new position
+ *
+ * All operations are performed within a transaction to ensure consistency
+ * when multiple requests are processed concurrently.
+ *
+ * @param type - Question type to fetch ('truth' or 'dare').
+ * @returns The next question with ID, text, type, and position, or null if no questions exist.
+ *
+ * @example
+ * ```typescript
+ * const question = getNextQuestion('truth');
+ * if (question) {
+ *   console.log(question.text); // "What is your biggest secret?"
+ *   console.log(question.question_id); // "8A3F2D1C"
+ * }
+ * ```
  */
 export const getNextQuestion = (type: QuestionType): QuestionForRotation | null => {
   const normalizedType = normalizeType(type);

@@ -17,11 +17,29 @@ import type { BotConfig } from '../../config/env.js';
 export const match = (customId: string): boolean => customId.startsWith('submit_confirm:');
 
 /**
- * Handles the submission confirmation button click.
+ * Handles the submission confirmation button click after similarity warning.
  *
- * @param interaction - Button interaction context.
- * @param client - Discord client used for messaging.
- * @param config - Application configuration.
+ * This function processes user confirmations when they choose to submit a question
+ * despite similarity warnings. It performs the following operations:
+ * 1. Parses and validates the pending submission ID from the button custom ID
+ * 2. Retrieves the pending submission from the cache (with 10-minute TTL)
+ * 3. Verifies the user is the original submitter (security check)
+ * 4. Creates the submission in the database
+ * 5. Posts to the approval channel for moderator review
+ *
+ * Security: Multiple validation checks ensure only the original submitter can
+ * confirm their own submission, and pending data expires after 10 minutes.
+ *
+ * @param interaction - Button interaction from the similarity warning message.
+ * @param client - Discord client instance for posting approval messages.
+ * @param config - Bot configuration containing approval channel ID.
+ * @returns Promise that resolves when submission is processed and user is notified.
+ *
+ * @example
+ * User sees similarity warning → clicks "Submit Anyway"
+ * → Pending data retrieved and validated
+ * → Submission created and posted to approval channel
+ * → User notified of successful submission
  */
 export const execute = async (
   interaction: ButtonInteraction,

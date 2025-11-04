@@ -40,9 +40,28 @@ export const data = new SlashCommandBuilder()
 /**
  * Processes `/submit` requests by storing the question and notifying moderators.
  *
- * @param interaction - Interaction payload from Discord.
- * @param client - Discord client used to post approval messages.
- * @param config - Application configuration.
+ * This function implements the complete submission workflow:
+ * 1. Validates rate limiting (max 10 submissions per 5 minutes per user)
+ * 2. Sanitizes and validates the question text
+ * 3. Checks for similar existing questions (70% similarity threshold)
+ * 4. If similar questions found: Shows warning and requires confirmation
+ * 5. If no similar questions: Creates submission and posts to approval channel
+ *
+ * The similarity check helps prevent duplicate questions from being submitted.
+ * Rate limiting prevents spam and abuse of the submission system.
+ *
+ * Security: All input is sanitized before processing. Rate limiting prevents abuse.
+ *
+ * @param interaction - Chat input command interaction from Discord.
+ * @param client - Discord client instance for posting approval messages.
+ * @param config - Bot configuration containing approval channel ID.
+ * @returns Promise that resolves when the submission is processed.
+ *
+ * @example
+ * User executes: /submit type:truth text:"What is your biggest fear?"
+ * Bot checks for similar questions and either:
+ * - Shows similarity warning with confirmation buttons, or
+ * - Creates submission and posts to approval channel
  */
 export const execute = async (
   interaction: ChatInputCommandInteraction,

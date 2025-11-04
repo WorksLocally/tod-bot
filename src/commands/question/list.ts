@@ -13,7 +13,21 @@ import { buildPaginationComponents } from '../../utils/paginationComponents.js';
 /**
  * Handles the 'list' subcommand for /question.
  *
- * @param interaction - Command interaction context.
+ * Displays all questions (or filtered by type) in a paginated format.
+ * Each page shows up to ~1800 characters of questions to fit within Discord's limits.
+ *
+ * Features:
+ * - Optional type filtering (truth, dare, or all)
+ * - Pagination with Previous/Next buttons for multiple pages
+ * - Shows question text, ID, and position for each question
+ * - Code block formatting for better readability
+ *
+ * @param interaction - Command interaction context with optional type filter.
+ * @returns Promise that resolves when the list is displayed.
+ *
+ * @example
+ * Moderator executes: /question list type:truth
+ * Bot displays first page of truth questions with pagination buttons if needed
  */
 export const executeList = async (
   interaction: ChatInputCommandInteraction

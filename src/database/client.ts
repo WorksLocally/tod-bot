@@ -93,7 +93,12 @@ interface ColumnInfo {
  * Detects whether the questions table still enforces a global UNIQUE constraint on position,
  * which would prevent dare and truth lists from maintaining independent orderings.
  *
- * @returns True when migration is required.
+ * This function checks the database schema to determine if an old version of the schema
+ * is in use. In older versions, there was a UNIQUE constraint on position alone, which
+ * caused conflicts between truth and dare questions. The new schema uses a composite
+ * UNIQUE constraint on (type, position) to allow independent position counters.
+ *
+ * @returns True if migration is needed (old schema detected), false otherwise.
  */
 const needsPositionMigration = (): boolean => {
   const indexes = db.prepare("PRAGMA index_list('questions')").all() as IndexInfo[];
@@ -110,6 +115,21 @@ const needsPositionMigration = (): boolean => {
 /**
  * Rebuilds the questions table so that question positions are unique per type, preserving the
  * ordering of existing questions and updating rotation state accordingly.
+ *
+ * This migration performs a complex schema transformation:
+ * 1. Renames the old questions table to questions_old
+ * 2. Creates a new questions table with composite UNIQUE(type, position) constraint
+ * 3. Creates a temporary mapping table that reassigns positions per type
+ * 4. Copies data from old table to new table with new positions
+ * 5. Updates rotation_state to reflect the new position numbers
+ * 6. Cleans up temporary tables
+ *
+ * All operations are wrapped in a transaction for atomicity. If the migration fails,
+ * all changes are rolled back to prevent data corruption.
+ *
+ * This migration is idempotent - running it multiple times is safe.
+ *
+ * @throws {Error} If the migration fails at any step.
  */
 const migrateQuestionPositions = (): void => {
   const migrate = db.transaction(() => {

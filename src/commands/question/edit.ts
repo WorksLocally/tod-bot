@@ -11,7 +11,16 @@ import { buildQuestionDetailEmbed } from './shared.js';
 /**
  * Handles the 'edit' subcommand for /question.
  *
- * @param interaction - Command interaction context.
+ * Updates the text of an existing question while preserving its ID, type, and position.
+ * The updated_at timestamp is automatically updated to reflect the modification.
+ *
+ * @param interaction - Command interaction context with question ID and new text.
+ * @returns Promise that resolves when the question is updated and reply is sent.
+ * @remarks Errors such as "question not found" or "update fails" are handled by sending an error reply to the user, not by throwing exceptions.
+ *
+ * @example
+ * Moderator executes: /question edit id:8A3F2D1C text:"Updated question text"
+ * Bot responds with: "Question 8A3F2D1C has been updated" (with embed showing new details)
  */
 export const executeEdit = async (
   interaction: ChatInputCommandInteraction

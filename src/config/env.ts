@@ -41,9 +41,21 @@ if (envPath) {
 /**
  * Resolves a required environment variable or throws if it is undefined.
  *
+ * This utility function ensures that required configuration values are present
+ * before the bot starts. If a required value is missing, the bot will fail to
+ * start with a clear error message indicating which variable is missing.
+ *
+ * This fail-fast approach prevents the bot from running in an invalid state.
+ *
  * @param key - Environment variable name to resolve.
- * @returns The resolved environment variable value.
- * @throws If the environment variable is missing or empty.
+ * @returns The resolved environment variable value (guaranteed to be non-empty).
+ * @throws {Error} If the environment variable is missing or empty.
+ *
+ * @example
+ * ```typescript
+ * const token = resolveRequired('DISCORD_TOKEN');
+ * // If DISCORD_TOKEN is not set, throws: "Missing required environment variable: DISCORD_TOKEN"
+ * ```
  */
 const resolveRequired = (key: string): string => {
   const value = process.env[key];
@@ -59,6 +71,30 @@ const QUESTION_MASTER_ROLE_ID = process.env.QUESTION_MASTER_ROLE_ID || '';
 
 /**
  * Runtime configuration for the bot sourced from environment variables.
+ *
+ * This interface defines all configuration values required or optional for the bot
+ * to operate. Values are loaded from .env file or environment variables at startup.
+ *
+ * Required variables (will throw error if missing):
+ * - DISCORD_TOKEN: Bot authentication token from Discord Developer Portal
+ * - CLIENT_ID: Discord application client ID
+ * - GUILD_ID: Discord server/guild ID where bot operates
+ * - APPROVAL_CHANNEL_ID: Channel where submission approval messages are posted
+ *
+ * Optional variables:
+ * - QOTD_CHANNEL_ID: Channel for Question of The Day posts (null if not configured)
+ * - QOTD_ENABLED: Enable/disable QOTD feature (default: false)
+ * - DATABASE_PATH: SQLite database file path (default: ./data/todbot.db)
+ * - ADMIN_ROLE_ID: Discord role ID for admin privileges
+ * - MODERATOR_ROLE_ID: Discord role ID for moderator privileges
+ * - QUESTION_MASTER_ROLE_ID: Discord role ID for question management privileges
+ *
+ * @example
+ * ```typescript
+ * import config from './config/env.js';
+ * console.log(config.token); // Discord bot token
+ * console.log(config.privilegedRoleIds); // Array of role IDs with special permissions
+ * ```
  */
 export interface BotConfig {
   token: string;

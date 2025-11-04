@@ -10,7 +10,18 @@ import * as questionService from '../../services/questionService.js';
 /**
  * Handles the 'delete' subcommand for /question.
  *
- * @param interaction - Command interaction context.
+ * Displays a confirmation dialog before deleting a question to prevent accidental deletions.
+ * The confirmation includes the question text (truncated to 100 chars) and ID.
+ *
+ * Note: The actual deletion happens when the user clicks the "Confirm Delete" button,
+ * which is handled by the questionDeleteConfirm button handler.
+ *
+ * @param interaction - Command interaction context with question ID option.
+ * @returns Promise that resolves when confirmation message is sent.
+ *
+ * @example
+ * Moderator executes: /question delete id:8A3F2D1C
+ * Bot shows confirmation dialog with "Confirm Delete" and "Cancel" buttons
  */
 export const executeDelete = async (
   interaction: ChatInputCommandInteraction

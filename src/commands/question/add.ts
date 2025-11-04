@@ -11,7 +11,21 @@ import { buildQuestionDetailEmbed } from './shared.js';
 /**
  * Handles the 'add' subcommand for /question.
  *
- * @param interaction - Command interaction context.
+ * Allows moderators to directly add questions without going through the approval process.
+ * Questions are added to the end of the rotation queue and assigned a unique 8-character ID.
+ *
+ * Requirements:
+ * - Both type and text parameters must be provided
+ * - Text must not be empty after trimming
+ *
+ * The added question is immediately available in the rotation queue for /truth or /dare commands.
+ *
+ * @param interaction - Command interaction context with type and text options.
+ * @returns Promise that resolves when the question is added and reply is sent.
+ *
+ * @example
+ * Moderator executes: /question add type:truth text:"What is your biggest accomplishment?"
+ * Bot responds with: "New question added with ID: 8A3F2D1C" (with embed showing details)
  */
 export const executeAdd = async (
   interaction: ChatInputCommandInteraction

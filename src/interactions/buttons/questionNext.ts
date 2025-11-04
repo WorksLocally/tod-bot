@@ -22,7 +22,23 @@ export const customIds: string[] = Object.keys(ID_TO_TYPE);
 /**
  * Replies to button interactions with the next sequential question.
  *
- * @param interaction - Button interaction context.
+ * This handler processes clicks on the "Truth" and "Dare" buttons that appear
+ * below question embeds. It fetches the next question from the rotation queue
+ * and displays it with a new set of interactive buttons.
+ *
+ * The button custom IDs are mapped to question types:
+ * - question_truth_next → 'truth'
+ * - question_dare_next → 'dare'
+ *
+ * Uses the same rotation system as the /truth and /dare slash commands.
+ *
+ * @param interaction - Button interaction context containing the clicked button ID.
+ * @returns Promise that resolves when the next question is displayed.
+ *
+ * @example
+ * User clicks "Truth" button on a question embed
+ * → Next truth question is fetched from rotation queue
+ * → New embed is shown with the question and interactive buttons
  */
 export const execute = async (interaction: ButtonInteraction): Promise<void> => {
   const questionType = ID_TO_TYPE[interaction.customId];

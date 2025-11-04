@@ -12,7 +12,12 @@ import logger from '../utils/logger.js';
 import config from '../config/env.js';
 
 /**
- * Updates the QOTD state in the database.
+ * Updates the QOTD state in the database to record the current posting time.
+ *
+ * This function uses SQLite's UPSERT (INSERT ... ON CONFLICT) to ensure
+ * that only one state record exists (id=1) and is updated with each posting.
+ *
+ * @throws {Error} If database update fails.
  */
 const updateQotdState = (): void => {
   const stmt = db.prepare(`
@@ -27,10 +32,31 @@ const updateQotdState = (): void => {
 
 /**
  * Posts the Question of The Day to the configured Discord channel.
- * Posts truth questions only.
  *
- * @param client - The Discord client instance.
- * @returns Promise that resolves when the question is posted, or rejects on error.
+ * This function is typically called by the cron scheduler at 6pm UTC daily.
+ * It performs the following operations:
+ * 1. Validates that QOTD feature is enabled in configuration
+ * 2. Validates that QOTD channel is configured
+ * 3. Fetches the next truth question from the rotation queue
+ * 4. Creates an embed with the question
+ * 5. Posts to the configured channel
+ * 6. Updates the QOTD state to record the posting time
+ *
+ * Only truth questions are posted for QOTD (not dare questions).
+ * Uses the same rotation system as manual /truth commands.
+ *
+ * @param client - The Discord client instance for channel access.
+ * @returns Promise that resolves when the question is posted successfully, or rejects with an Error if posting fails.
+ * @throws {Error} If QOTD channel is not found or not a text channel. (The returned promise will be rejected with this error.)
+ * @throws {Error} If posting to Discord fails. (The returned promise will be rejected with this error.)
+ *
+ * @example
+ * ```typescript
+ * // Called by cron scheduler
+ * cron.schedule('0 18 * * *', async () => {
+ *   await postQuestionOfTheDay(client);
+ * });
+ * ```
  */
 export const postQuestionOfTheDay = async (client: Client): Promise<void> => {
   try {

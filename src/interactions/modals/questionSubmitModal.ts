@@ -18,9 +18,30 @@ import type { QuestionType } from '../../services/questionService.js';
 /**
  * Handles the submission of the question submit modal.
  *
- * @param interaction - Modal submit interaction context.
- * @param client - Discord client used for messaging.
- * @param config - Application configuration.
+ * This function processes question submissions from the modal form displayed when
+ * users click the "Submit Question" button. It implements the complete submission
+ * workflow:
+ * 1. Validates question type (must be 'truth' or 'dare')
+ * 2. Sanitizes question text (max 4000 characters, removes control chars)
+ * 3. Checks for similar existing questions (70% similarity threshold)
+ * 4. If similar questions found: Shows warning with confirmation buttons
+ * 5. If no similar questions: Creates submission and posts to approval channel
+ *
+ * This is an alternative entry point to /submit command, providing the same
+ * functionality but accessible via button interactions.
+ *
+ * Security: Input is sanitized before processing. Rate limiting is NOT applied
+ * here (should be handled at a higher level if needed).
+ *
+ * @param interaction - Modal submit interaction with type and text fields.
+ * @param client - Discord client for posting approval messages.
+ * @param config - Bot configuration containing approval channel ID.
+ * @returns Promise that resolves when submission is processed.
+ *
+ * @example
+ * User clicks "Submit Question" button → fills modal → submits
+ * → Validation and similarity check performed
+ * → Either shows warning or creates submission
  */
 export const handleQuestionSubmitModal = async (
   interaction: ModalSubmitInteraction,

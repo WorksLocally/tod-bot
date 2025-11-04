@@ -59,8 +59,39 @@ interface CreateSubmissionParams {
 /**
  * Creates a submission for later moderation review.
  *
- * @param params - Submission payload.
- * @returns Persisted submission record.
+ * This function creates a new pending submission record in the database with:
+ * - A unique 6-character alphanumeric submission ID
+ * - Sanitized question text (max 4000 characters)
+ * - Initial status of 'pending'
+ * - Current timestamp for created_at
+ *
+ * The submission will appear in the approval channel for moderators to review.
+ *
+ * Security: Input text is sanitized to remove control characters and prevent
+ * injection attacks. Prepared statements protect against SQL injection.
+ *
+ * @param params - Submission payload with question details.
+ * @param params.type - Question type ('truth' or 'dare').
+ * @param params.text - Question text submitted by user (will be sanitized).
+ * @param params.userId - Discord user ID of the submitter.
+ * @param params.guildId - Optional Discord guild/server ID where submitted.
+ * @param params.approvalChannelId - Optional channel ID where approval message will be posted.
+ * @returns Persisted submission record with generated submission_id.
+ * @throws {Error} If submission text is empty after sanitization.
+ * @throws {Error} If database insertion fails.
+ *
+ * @example
+ * ```typescript
+ * const submission = createSubmission({
+ *   type: 'truth',
+ *   text: 'What is your biggest regret?',
+ *   userId: '123456789012345678',
+ *   guildId: '987654321098765432',
+ *   approvalChannelId: '111222333444555666'
+ * });
+ * console.log(submission.submission_id); // 'A3F2D1'
+ * console.log(submission.status); // 'pending'
+ * ```
  */
 export const createSubmission = ({ type, text, userId, guildId, approvalChannelId }: CreateSubmissionParams): SubmissionRecord => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
