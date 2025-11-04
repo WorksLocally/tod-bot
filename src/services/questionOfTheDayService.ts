@@ -96,7 +96,7 @@ export const postQuestionOfTheDay = async (client: Client): Promise<void> => {
       .setTitle('Question of The Day')
       .setDescription(question.text)
       .setColor(0x3498db) // Blue for truth
-      .setFooter({ text: `Question ID: ${question.question_id}` })
+      .setFooter({ text: `Question ID: ${question.question_id} • Questions are automatically posted each day at 6pm UTC` })
       .setTimestamp();
 
     // Update the state
