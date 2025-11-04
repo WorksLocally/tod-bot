@@ -17,7 +17,22 @@ export const data = new SlashCommandBuilder()
 /**
  * Handles execution of the `/dare` command by replying with the next dare prompt.
  *
- * @param interaction - Interaction payload from Discord.
+ * This function implements the following flow:
+ * 1. Checks rate limiting (max 20 questions per minute per user)
+ * 2. Fetches the next dare question from the rotation queue
+ * 3. Builds an embed with the question and requester information
+ * 4. Adds interactive buttons (Truth, Dare, Submit Question)
+ * 5. Replies to the interaction with the question
+ *
+ * Rate limiting prevents spam and abuse of the question system.
+ * The rotation queue ensures fair distribution of all dare questions.
+ *
+ * @param interaction - Chat input command interaction from Discord.
+ * @returns Promise that resolves when the reply is sent.
+ *
+ * @example
+ * User executes: /dare
+ * Bot replies with: An embed showing a dare question with interactive buttons
  */
 export const execute = async (interaction: ChatInputCommandInteraction): Promise<void> => {
   // Check rate limit

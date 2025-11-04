@@ -15,11 +15,26 @@ export interface SimilarityMatch {
 
 /**
  * Calculates the similarity between two strings using Levenshtein distance.
- * Returns a score between 0 and 1, where 1 is identical.
+ *
+ * The Levenshtein distance measures the minimum number of single-character edits
+ * (insertions, deletions, or substitutions) required to change one string into another.
+ * This distance is then converted to a similarity score between 0 and 1.
+ *
+ * Comparison is case-insensitive and whitespace-trimmed for better accuracy.
+ *
+ * Time complexity: O(m * n) where m and n are the string lengths.
+ * Space complexity: O(m * n) for the distance matrix.
  *
  * @param str1 - First string to compare.
  * @param str2 - Second string to compare.
- * @returns Similarity score between 0 and 1.
+ * @returns Similarity score between 0 (completely different) and 1 (identical).
+ *
+ * @example
+ * ```typescript
+ * calculateSimilarity('hello world', 'Hello World!'); // ~0.91
+ * calculateSimilarity('cat', 'dog'); // ~0.0
+ * calculateSimilarity('truth', 'truth'); // 1.0
+ * ```
  */
 const calculateSimilarity = (str1: string, str2: string): number => {
   const s1 = str1.toLowerCase().trim();

@@ -12,9 +12,22 @@ import type { StoredQuestion } from '../../services/questionService.js';
 /**
  * Verifies whether the invoking member has permission to run moderation commands.
  *
- * @param interaction - Command interaction context.
- * @param config - Application configuration.
- * @returns Resolves true when the member is privileged; otherwise false.
+ * Checks if the user has any of the privileged roles (Admin, Moderator, Question Master)
+ * or has the Administrator permission. If not authorized, sends an ephemeral error message.
+ *
+ * Security: This is the primary authorization check for all /question subcommands.
+ *
+ * @param interaction - Command interaction context containing member information.
+ * @param config - Bot configuration with privilegedRoleIds array.
+ * @returns Promise resolving to true if authorized, false if not (with error message sent).
+ *
+ * @example
+ * ```typescript
+ * if (!(await ensurePrivileged(interaction, config))) {
+ *   return; // User was notified of insufficient permissions
+ * }
+ * // Continue with privileged operation
+ * ```
  */
 export const ensurePrivileged = async (
   interaction: ChatInputCommandInteraction,

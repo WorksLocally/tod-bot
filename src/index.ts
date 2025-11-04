@@ -35,6 +35,19 @@ const client = new Client({
 
 /**
  * Initializes the Discord client with commands and handlers.
+ *
+ * This is the main initialization function that sets up the bot:
+ * 1. Loads all command modules from src/commands/
+ * 2. Loads all button handlers from src/interactions/buttons/
+ * 3. Registers commands and handlers on the client instance
+ * 4. Sets up event listeners for ClientReady and InteractionCreate
+ * 5. Logs in to Discord using the bot token
+ * 6. Initializes the QOTD scheduler (if enabled)
+ *
+ * The function uses async/await to ensure proper sequencing of initialization steps.
+ * If any step fails, the error is logged and the process exits with code 1.
+ *
+ * @throws {Error} If login fails or command/handler loading fails.
  */
 const initializeClient = async (): Promise<void> => {
   /**
@@ -187,9 +200,24 @@ const initializeClient = async (): Promise<void> => {
 
 /**
  * Initializes the Question of The Day scheduler.
- * Posts a truth question daily at 6pm UTC.
  *
- * @param client - The Discord client instance.
+ * Sets up a cron job that posts a truth question to the configured channel
+ * daily at 6pm UTC (18:00). The scheduler only activates if:
+ * - QOTD_ENABLED is set to 'true' in configuration
+ * - QOTD_CHANNEL_ID is configured with a valid channel ID
+ *
+ * The scheduler uses node-cron for reliable scheduling across restarts.
+ * Schedule expression: '0 18 * * *' (minute hour day month dayOfWeek)
+ *
+ * @param client - The Discord client instance used to post messages.
+ *
+ * @example
+ * ```typescript
+ * // Called automatically when bot connects to Discord
+ * client.once(Events.ClientReady, (readyClient) => {
+ *   initializeQotdScheduler(readyClient);
+ * });
+ * ```
  */
 const initializeQotdScheduler = (client: Client): void => {
   if (!config.qotdEnabled) {

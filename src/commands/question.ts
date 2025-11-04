@@ -94,11 +94,28 @@ export const data = new SlashCommandBuilder()
 
 /**
  * Handles all `/question` subcommands for moderators, including approvals and maintenance.
- * Routes to specialized subcommand handlers for better organization and maintainability.
  *
- * @param interaction - Interaction context.
- * @param client - Discord client used for messaging.
- * @param config - Application configuration containing privileged roles.
+ * This is the main router for all question management operations. It performs:
+ * 1. Permission validation (requires privileged role or administrator)
+ * 2. Subcommand routing to specialized handlers
+ *
+ * Available subcommands:
+ * - add: Add a new question directly without approval
+ * - delete: Remove a question by ID (requires confirmation)
+ * - edit: Update question text
+ * - list: View all questions with pagination
+ * - view: View detailed information about a specific question
+ *
+ * Security: All subcommands require privileged role access (Admin, Moderator, or Question Master).
+ *
+ * @param interaction - Chat input command interaction context.
+ * @param _client - Discord client (unused, but required by command interface).
+ * @param config - Bot configuration containing privileged role IDs.
+ * @returns Promise that resolves when the subcommand handler completes.
+ *
+ * @example
+ * Moderator executes: /question add type:truth text:"What is your dream job?"
+ * Bot validates permissions and routes to executeAdd handler
  */
 export const execute = async (
   interaction: ChatInputCommandInteraction,

@@ -12,9 +12,25 @@ import logger from '../../utils/logger.js';
 /**
  * Handles the submission of the rejection modal.
  *
- * @param interaction - Modal submit interaction context.
- * @param client - Discord client used for messaging.
- * @param submissionId - The submission ID being rejected.
+ * This function processes moderator rejections of question submissions. It:
+ * 1. Extracts the optional rejection reason from the modal input
+ * 2. Validates the submission exists and is still pending
+ * 3. Updates the submission status to 'rejected' in the database
+ * 4. Updates the approval message embed and removes buttons
+ * 5. Sends a DM to the submitter with the rejection reason
+ *
+ * The rejection reason is sanitized and limited to 1000 characters to prevent abuse.
+ *
+ * @param interaction - Modal submit interaction containing the rejection reason.
+ * @param client - Discord client for updating messages and sending DMs.
+ * @param submissionId - 6-character submission ID being rejected.
+ * @returns Promise that resolves when rejection is processed.
+ *
+ * @example
+ * Moderator clicks "Reject" → enters reason "Too similar to existing question"
+ * → Submission marked as rejected
+ * → Submitter receives DM with reason
+ * → Approval message updated to show rejected status
  */
 export const handleRejectModalSubmit = async (
   interaction: ModalSubmitInteraction,

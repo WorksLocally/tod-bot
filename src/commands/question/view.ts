@@ -11,7 +11,19 @@ import { buildQuestionDetailEmbed } from './shared.js';
 /**
  * Handles the 'view' subcommand for /question.
  *
- * @param interaction - Command interaction context.
+ * Displays detailed information about a specific question including:
+ * - Question text
+ * - Question ID
+ * - Type (Truth/Dare)
+ * - Position in rotation queue
+ * - Last updated timestamp
+ *
+ * @param interaction - Command interaction context with question ID parameter.
+ * @returns Promise that resolves when the question details are displayed.
+ *
+ * @example
+ * Moderator executes: /question view id:8A3F2D1C
+ * Bot displays an embed with full question details
  */
 export const executeView = async (
   interaction: ChatInputCommandInteraction

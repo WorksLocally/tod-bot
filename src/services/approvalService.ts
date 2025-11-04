@@ -220,8 +220,35 @@ interface PostSubmissionForApprovalParams {
 /**
  * Sends a submission embed to the approval channel and records the resulting message reference.
  *
- * @param params - Invocation parameters.
- * @returns The posted approval message.
+ * This function performs the following operations:
+ * 1. Fetches the approval channel from Discord
+ * 2. Checks for similar existing questions (70% similarity threshold)
+ * 3. Builds an embed displaying the submission with similarity warnings
+ * 4. Adds Approve/Reject buttons to the message
+ * 5. Posts the message and adds a pending reaction emoji
+ * 6. Stores the message ID reference in the database for future updates
+ *
+ * Similar questions are displayed to help moderators avoid approving duplicates.
+ *
+ * @param params - Invocation parameters including client, config, submission, and user.
+ * @param params.client - Discord client instance for channel/message operations.
+ * @param params.config - Bot configuration containing approval channel ID.
+ * @param params.submission - The submission record to post for approval.
+ * @param params.user - Discord user object of the submitter (for embed author).
+ * @returns The posted approval message from Discord.
+ * @throws {Error} If approval channel is not found or not accessible.
+ * @throws {Error} If message posting fails.
+ *
+ * @example
+ * ```typescript
+ * const message = await postSubmissionForApproval({
+ *   client,
+ *   config,
+ *   submission: submissionRecord,
+ *   user: interaction.user
+ * });
+ * console.log('Posted to channel:', message.channelId);
+ * ```
  */
 export const postSubmissionForApproval = async ({
   client,
