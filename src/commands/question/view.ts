@@ -7,6 +7,7 @@
 import { MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import * as questionService from '../../services/questionService.js';
 import { buildQuestionDetailEmbed } from './shared.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Handles the 'view' subcommand for /question.
@@ -32,12 +33,24 @@ export const executeView = async (
   const question = questionService.getQuestionById(questionId);
 
   if (!question) {
+    logger.info('Attempted to view non-existent question', {
+      questionId,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
     await interaction.reply({
       content: `Question \`${questionId}\` was not found.`,
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
+
+  logger.info('Question viewed via command', {
+    questionId,
+    type: question.type,
+    userId: interaction.user.id,
+    guildId: interaction.guildId
+  });
 
   await interaction.reply({
     embeds: [buildQuestionDetailEmbed(question)],

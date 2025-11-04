@@ -8,6 +8,7 @@ import { MessageFlags, ButtonInteraction, GuildMember } from 'discord.js';
 import { getNextQuestion } from '../../services/questionService.js';
 import type { QuestionType } from '../../services/questionService.js';
 import { buildQuestionEmbed, buildQuestionComponents } from '../../utils/questionEmbeds.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Maps button custom IDs to their associated question type.
@@ -43,23 +44,48 @@ export const customIds: string[] = Object.keys(ID_TO_TYPE);
 export const execute = async (interaction: ButtonInteraction): Promise<void> => {
   const questionType = ID_TO_TYPE[interaction.customId];
 
-  const question = getNextQuestion(questionType);
-  if (!question) {
+  try {
+    const question = getNextQuestion(questionType);
+    if (!question) {
+      logger.warn('No questions available for button request', {
+        type: questionType,
+        userId: interaction.user.id,
+        guildId: interaction.guildId
+      });
+      await interaction.reply({
+        content: `There are currently no ${questionType} questions available.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    logger.info('Question retrieved via button interaction', {
+      questionId: question.question_id,
+      type: questionType,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
+
+    const embed = buildQuestionEmbed({
+      question,
+      requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
+    });
+
     await interaction.reply({
-      content: `There are currently no ${questionType} questions available.`,
+      embeds: [embed],
+      components: buildQuestionComponents(),
+      allowedMentions: { parse: [] },
+    });
+  } catch (error) {
+    logger.error('Failed to retrieve question via button', {
+      error,
+      type: questionType,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
+    await interaction.reply({
+      content: 'An error occurred while retrieving the question. Please try again.',
       flags: MessageFlags.Ephemeral,
     });
-    return;
   }
-
-  const embed = buildQuestionEmbed({
-    question,
-    requestedBy: (interaction.member as GuildMember | null) ?? interaction.user,
-  });
-
-  await interaction.reply({
-    embeds: [embed],
-    components: buildQuestionComponents(),
-    allowedMentions: { parse: [] },
-  });
 };

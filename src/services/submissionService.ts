@@ -8,6 +8,7 @@ import db from '../database/client.js';
 import { generateSubmissionId } from '../utils/id.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { QuestionType } from './questionService.js';
+import logger from '../utils/logger.js';
 
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
 
@@ -96,33 +97,70 @@ interface CreateSubmissionParams {
 export const createSubmission = ({ type, text, userId, guildId, approvalChannelId }: CreateSubmissionParams): SubmissionRecord => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
+    logger.error('Attempted to create submission with empty text after sanitization', {
+      type,
+      userId,
+      originalLength: text.length
+    });
     throw new Error('Submission text cannot be empty.');
   }
 
   let submissionId: string = '';
   let inserted = false;
+  let retryCount = 0;
 
-  while (!inserted) {
-    submissionId = generateSubmissionId();
-    try {
-      STATEMENTS.insertSubmission.run(
-        submissionId,
-        type,
-        sanitizedText,
-        userId,
-        guildId || null,
-        'pending',
-        approvalChannelId || null
-      );
-      inserted = true;
-    } catch (error) {
-      if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
-        throw error;
+  try {
+    while (!inserted) {
+      submissionId = generateSubmissionId();
+      try {
+        STATEMENTS.insertSubmission.run(
+          submissionId,
+          type,
+          sanitizedText,
+          userId,
+          guildId || null,
+          'pending',
+          approvalChannelId || null
+        );
+        inserted = true;
+      } catch (error) {
+        if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+          logger.error('Failed to insert submission due to database error', {
+            error,
+            type,
+            userId,
+            guildId
+          });
+          throw error;
+        }
+        retryCount++;
+        if (retryCount > 10) {
+          logger.error('Failed to generate unique submission ID after multiple attempts', {
+            type,
+            userId,
+            retryCount
+          });
+          throw new Error('Failed to generate unique submission ID');
+        }
       }
     }
-  }
 
-  return STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord;
+    const submission = STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord;
+
+    logger.info('Successfully created submission', {
+      submissionId,
+      type,
+      userId,
+      guildId,
+      approvalChannelId,
+      textLength: sanitizedText.length
+    });
+
+    return submission;
+  } catch (error) {
+    logger.error('Failed to create submission', { error, type, userId, guildId });
+    throw error;
+  }
 };
 
 interface UpdateSubmissionStatusParams {
@@ -138,14 +176,39 @@ interface UpdateSubmissionStatusParams {
  * @returns Count of affected rows.
  */
 export const updateSubmissionStatus = ({ submissionId, status, resolverId }: UpdateSubmissionStatusParams): number => {
-  const info = STATEMENTS.updateStatus.run(
-    status,
-    status,
-    status,
-    resolverId || null,
-    submissionId
-  );
-  return info.changes;
+  try {
+    const info = STATEMENTS.updateStatus.run(
+      status,
+      status,
+      status,
+      resolverId || null,
+      submissionId
+    );
+
+    if (info.changes > 0) {
+      logger.info('Successfully updated submission status', {
+        submissionId,
+        status,
+        resolverId,
+        rowsAffected: info.changes
+      });
+    } else {
+      logger.warn('Attempted to update status of non-existent submission', {
+        submissionId,
+        status
+      });
+    }
+
+    return info.changes;
+  } catch (error) {
+    logger.error('Failed to update submission status', {
+      error,
+      submissionId,
+      status,
+      resolverId
+    });
+    throw error;
+  }
 };
 
 interface SetApprovalMessageParams {
@@ -161,8 +224,33 @@ interface SetApprovalMessageParams {
  * @returns Count of affected rows.
  */
 export const setApprovalMessage = ({ submissionId, messageId, channelId }: SetApprovalMessageParams): number => {
-  const info = STATEMENTS.setApprovalMessage.run(messageId, channelId, submissionId);
-  return info.changes;
+  try {
+    const info = STATEMENTS.setApprovalMessage.run(messageId, channelId, submissionId);
+
+    if (info.changes > 0) {
+      logger.info('Successfully set approval message reference', {
+        submissionId,
+        messageId,
+        channelId
+      });
+    } else {
+      logger.warn('Attempted to set approval message for non-existent submission', {
+        submissionId,
+        messageId,
+        channelId
+      });
+    }
+
+    return info.changes;
+  } catch (error) {
+    logger.error('Failed to set approval message reference', {
+      error,
+      submissionId,
+      messageId,
+      channelId
+    });
+    throw error;
+  }
 };
 
 /**
@@ -172,7 +260,24 @@ export const setApprovalMessage = ({ submissionId, messageId, channelId }: SetAp
  * @returns Found submission, if any.
  */
 export const getSubmissionById = (submissionId: string): SubmissionRecord | undefined => {
-  return STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord | undefined;
+  try {
+    const submission = STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord | undefined;
+
+    if (submission) {
+      logger.debug('Retrieved submission by ID', {
+        submissionId,
+        type: submission.type,
+        status: submission.status
+      });
+    } else {
+      logger.debug('Submission not found', { submissionId });
+    }
+
+    return submission;
+  } catch (error) {
+    logger.error('Failed to retrieve submission by ID', { error, submissionId });
+    throw error;
+  }
 };
 
 /**
@@ -181,5 +286,12 @@ export const getSubmissionById = (submissionId: string): SubmissionRecord | unde
  * @returns Pending submission records.
  */
 export const listPendingSubmissions = (): SubmissionRecord[] => {
-  return STATEMENTS.listPendingSubmissions.all() as SubmissionRecord[];
+  try {
+    const submissions = STATEMENTS.listPendingSubmissions.all() as SubmissionRecord[];
+    logger.debug('Listed pending submissions', { count: submissions.length });
+    return submissions;
+  } catch (error) {
+    logger.error('Failed to list pending submissions', { error });
+    throw error;
+  }
 };

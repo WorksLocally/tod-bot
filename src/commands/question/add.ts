@@ -7,6 +7,7 @@
 import { MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import * as questionService from '../../services/questionService.js';
 import { buildQuestionDetailEmbed } from './shared.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Handles the 'add' subcommand for /question.
@@ -34,6 +35,11 @@ export const executeAdd = async (
   const text = interaction.options.getString('text');
 
   if (!type || !text) {
+    logger.warn('Question add command missing required parameters', {
+      userId: interaction.user.id,
+      hasType: !!type,
+      hasText: !!text
+    });
     await interaction.reply({
       content: 'Please provide both `type` and `text` to add a new question directly.',
       flags: MessageFlags.Ephemeral,
@@ -43,6 +49,10 @@ export const executeAdd = async (
 
   const trimmed = text.trim();
   if (!trimmed.length) {
+    logger.warn('Question add command received empty text', {
+      userId: interaction.user.id,
+      type
+    });
     await interaction.reply({
       content: 'Question text cannot be empty.',
       flags: MessageFlags.Ephemeral,
@@ -50,16 +60,36 @@ export const executeAdd = async (
     return;
   }
 
-  const question = questionService.addQuestion({
-    type,
-    text: trimmed,
-    createdBy: interaction.user.id,
-  });
+  try {
+    const question = questionService.addQuestion({
+      type,
+      text: trimmed,
+      createdBy: interaction.user.id,
+    });
 
-  await interaction.reply({
-    content: `New question added with ID: \`${question.question_id}\``,
-    embeds: [buildQuestionDetailEmbed(question)],
-    flags: MessageFlags.Ephemeral,
-    allowedMentions: { parse: [] },
-  });
+    logger.info('Question added via command', {
+      questionId: question.question_id,
+      type: question.type,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
+
+    await interaction.reply({
+      content: `New question added with ID: \`${question.question_id}\``,
+      embeds: [buildQuestionDetailEmbed(question)],
+      flags: MessageFlags.Ephemeral,
+      allowedMentions: { parse: [] },
+    });
+  } catch (error) {
+    logger.error('Failed to add question via command', {
+      error,
+      type,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
+    await interaction.reply({
+      content: 'Failed to add question. Please try again later.',
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 };

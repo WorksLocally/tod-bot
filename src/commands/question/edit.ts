@@ -7,6 +7,7 @@
 import { MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import * as questionService from '../../services/questionService.js';
 import { buildQuestionDetailEmbed } from './shared.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Handles the 'edit' subcommand for /question.
@@ -30,6 +31,11 @@ export const executeEdit = async (
 
   const question = questionService.getQuestionById(questionId);
   if (!question) {
+    logger.warn('Attempted to edit non-existent question via command', {
+      questionId,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
     await interaction.reply({
       content: `Question \`${questionId}\` was not found.`,
       flags: MessageFlags.Ephemeral,
@@ -39,19 +45,31 @@ export const executeEdit = async (
 
   try {
     questionService.editQuestion({ questionId, text: newText });
+    const updated = questionService.getQuestionById(questionId);
+
+    logger.info('Question edited via command', {
+      questionId,
+      type: updated?.type,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
+
+    await interaction.reply({
+      content: `Question \`${questionId}\` has been updated.`,
+      embeds: [buildQuestionDetailEmbed(updated!)],
+      flags: MessageFlags.Ephemeral,
+      allowedMentions: { parse: [] },
+    });
   } catch (error) {
+    logger.error('Failed to edit question via command', {
+      error,
+      questionId,
+      userId: interaction.user.id,
+      guildId: interaction.guildId
+    });
     await interaction.reply({
       content: `Unable to update question: ${(error as Error).message}`,
       flags: MessageFlags.Ephemeral,
     });
-    return;
   }
-  const updated = questionService.getQuestionById(questionId);
-
-  await interaction.reply({
-    content: `Question \`${questionId}\` has been updated.`,
-    embeds: [buildQuestionDetailEmbed(updated!)],
-    flags: MessageFlags.Ephemeral,
-    allowedMentions: { parse: [] },
-  });
 };
