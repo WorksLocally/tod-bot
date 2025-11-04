@@ -263,6 +263,9 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): StoredQu
   }
 
   try {
+    // Note: Using `.get()` for UPDATE ... RETURNING is intentional.
+    // SQLite's RETURNING clause allows UPDATE to return the updated row as an object,
+    // or `undefined` if no row matched. This is non-obvious, so we document it here.
     const updated = STATEMENTS.updateQuestion.get(sanitizedText, questionId) as StoredQuestion | undefined;
 
     if (updated) {
