@@ -16,7 +16,7 @@ import { buildQuestionDetailEmbed } from './shared.js';
  *
  * @param interaction - Command interaction context with question ID and new text.
  * @returns Promise that resolves when the question is updated and reply is sent.
- * @throws Will reply with error message if question not found or update fails.
+ * @remarks Errors such as "question not found" or "update fails" are handled by sending an error reply to the user, not by throwing exceptions.
  *
  * @example
  * Moderator executes: /question edit id:8A3F2D1C text:"Updated question text"
