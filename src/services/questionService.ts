@@ -8,6 +8,7 @@ import db from '../database/client.js';
 import { generateQuestionId } from '../utils/id.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { LRUCache } from '../utils/lruCache.js';
+import logger from '../utils/logger.js';
 
 const VALID_QUESTION_TYPES = new Set(['truth', 'dare']);
 
@@ -82,7 +83,7 @@ const STATEMENTS = {
     'INSERT INTO questions (question_id, type, text, created_by, position) VALUES (?, ?, ?, ?, ?)'
   ),
   updateQuestion: db.prepare(
-    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ?"
+    "UPDATE questions SET text = ?, updated_at = datetime('now') WHERE question_id = ? RETURNING question_id, type, text, position, created_at, updated_at, created_by"
   ),
   deleteQuestion: db.prepare('DELETE FROM questions WHERE question_id = ?'),
   getQuestionById: db.prepare(
@@ -151,6 +152,11 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
   const questionType = normalizeType(type);
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
+    logger.error('Attempted to add question with empty text after sanitization', {
+      type: questionType,
+      createdBy,
+      originalLength: text.length
+    });
     throw new Error('Question text cannot be empty.');
   }
 
@@ -160,6 +166,7 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
 
     let questionId: string = '';
     let inserted = false;
+    let retryCount = 0;
 
     while (!inserted) {
       questionId = generateQuestionId();
@@ -174,19 +181,41 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
         inserted = true;
       } catch (error) {
         if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+          logger.error('Failed to insert question due to database error', {
+            error,
+            type: questionType,
+            position,
+            createdBy
+          });
           throw error;
+        }
+        retryCount++;
+        if (retryCount > 10) {
+          logger.error('Failed to generate unique question ID after multiple attempts', {
+            type: questionType,
+            retryCount
+          });
+          throw new Error('Failed to generate unique question ID');
         }
       }
     }
 
     const result = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
-    
+
     // Cache the newly added question
     questionCache.set(questionId, result);
-    
+
     // Invalidate next question cache for this type since we added a new one
     nextQuestionCache.delete(questionType);
-    
+
+    logger.info('Successfully added new question', {
+      questionId,
+      type: questionType,
+      position: result.position,
+      createdBy,
+      textLength: sanitizedText.length
+    });
+
     return result;
   });
 
@@ -209,7 +238,7 @@ interface EditQuestionParams {
  * @param params - Update payload containing question ID and new text.
  * @param params.questionId - 8-character question identifier.
  * @param params.text - New question text (will be sanitized, max 4000 chars).
- * @returns Count of rows affected (0 if question not found, 1 if updated).
+ * @returns The updated question record if found and updated, null otherwise.
  * @throws {Error} If question text is empty after sanitization.
  *
  * @example
@@ -218,21 +247,46 @@ interface EditQuestionParams {
  *   questionId: '8A3F2D1C',
  *   text: 'What is your greatest accomplishment?'
  * });
- * console.log(updated); // 1
+ * if (updated) {
+ *   console.log('Updated:', updated.text);
+ * }
  * ```
  */
-export const editQuestion = ({ questionId, text }: EditQuestionParams): number => {
+export const editQuestion = ({ questionId, text }: EditQuestionParams): StoredQuestion | null => {
   const sanitizedText = sanitizeText(text, { maxLength: 4000 });
   if (!sanitizedText.length) {
+    logger.error('Attempted to edit question with empty text after sanitization', {
+      questionId,
+      originalLength: text.length
+    });
     throw new Error('Question text cannot be empty.');
   }
 
-  const info = STATEMENTS.updateQuestion.run(sanitizedText, questionId);
-  
-  // Invalidate cache for this question
-  questionCache.delete(questionId);
-  
-  return info.changes;
+  try {
+    // Note: Using `.get()` for UPDATE ... RETURNING is intentional.
+    // SQLite's RETURNING clause allows UPDATE to return the updated row as an object,
+    // or `undefined` if no row matched. This is non-obvious, so we document it here.
+    const updated = STATEMENTS.updateQuestion.get(sanitizedText, questionId) as StoredQuestion | undefined;
+
+    if (updated) {
+      // Invalidate cache for this question
+      questionCache.delete(questionId);
+
+      logger.info('Successfully edited question', {
+        questionId,
+        textLength: sanitizedText.length
+      });
+      return updated;
+    } else {
+      logger.warn('Attempted to edit non-existent question', {
+        questionId
+      });
+      return null;
+    }
+  } catch (error) {
+    logger.error('Failed to edit question', { error, questionId });
+    throw error;
+  }
 };
 
 /**
@@ -242,12 +296,27 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): number =
  * @returns Count of rows removed.
  */
 export const deleteQuestion = (questionId: string): number => {
-  const info = STATEMENTS.deleteQuestion.run(questionId);
-  
-  // Remove from cache
-  questionCache.delete(questionId);
-  
-  return info.changes;
+  try {
+    const info = STATEMENTS.deleteQuestion.run(questionId);
+
+    // Remove from cache
+    questionCache.delete(questionId);
+
+    if (info.changes > 0) {
+      logger.info('Successfully deleted question', {
+        questionId
+      });
+    } else {
+      logger.warn('Attempted to delete non-existent question', {
+        questionId
+      });
+    }
+
+    return info.changes;
+  } catch (error) {
+    logger.error('Failed to delete question', { error, questionId });
+    throw error;
+  }
 };
 
 /**
@@ -260,15 +329,19 @@ export const getQuestionById = (questionId: string): StoredQuestion | undefined 
   // Check cache first
   const cached = questionCache.get(questionId);
   if (cached) {
+    logger.debug('Question cache hit', { questionId });
     return cached;
   }
-  
+
   // Fetch from database and cache
   const question = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion | undefined;
   if (question) {
     questionCache.set(questionId, question);
+    logger.debug('Question fetched from database and cached', { questionId, type: question.type });
+  } else {
+    logger.debug('Question not found', { questionId });
   }
-  
+
   return question;
 };
 
@@ -279,11 +352,21 @@ export const getQuestionById = (questionId: string): StoredQuestion | undefined 
  * @returns List of stored questions.
  */
 export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
-  if (type) {
-    const normalized = normalizeType(type);
-    return STATEMENTS.listQuestionsByType.all(normalized) as StoredQuestion[];
+  try {
+    let questions: StoredQuestion[];
+    if (type) {
+      const normalized = normalizeType(type);
+      questions = STATEMENTS.listQuestionsByType.all(normalized) as StoredQuestion[];
+      logger.debug('Listed questions by type', { type: normalized, count: questions.length });
+    } else {
+      questions = STATEMENTS.listQuestions.all() as StoredQuestion[];
+      logger.debug('Listed all questions', { count: questions.length });
+    }
+    return questions;
+  } catch (error) {
+    logger.error('Failed to list questions', { error, type });
+    throw error;
   }
-  return STATEMENTS.listQuestions.all() as StoredQuestion[];
 };
 
 /**
@@ -312,21 +395,41 @@ export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
  */
 export const getNextQuestion = (type: QuestionType): QuestionForRotation | null => {
   const normalizedType = normalizeType(type);
-  const fetch = db.transaction(() => {
-    const state = STATEMENTS.getRotationState.get(normalizedType) as RotationStateResult | undefined;
-    const lastPosition = state ? state.lastPosition : 0;
-    let nextQuestion = STATEMENTS.getNextQuestion.get(normalizedType, lastPosition) as QuestionForRotation | undefined;
 
-    if (!nextQuestion) {
-      nextQuestion = STATEMENTS.getFirstQuestion.get(normalizedType) as QuestionForRotation | undefined;
+  try {
+    const fetch = db.transaction(() => {
+      const state = STATEMENTS.getRotationState.get(normalizedType) as RotationStateResult | undefined;
+      const lastPosition = state ? state.lastPosition : 0;
+      let nextQuestion = STATEMENTS.getNextQuestion.get(normalizedType, lastPosition) as QuestionForRotation | undefined;
+
+      let wrapped = false;
       if (!nextQuestion) {
-        return null;
+        // Wrap around to the beginning
+        nextQuestion = STATEMENTS.getFirstQuestion.get(normalizedType) as QuestionForRotation | undefined;
+        wrapped = true;
+
+        if (!nextQuestion) {
+          logger.warn('No questions available for rotation', { type: normalizedType });
+          return null;
+        }
       }
-    }
 
-    STATEMENTS.upsertRotationState.run(normalizedType, nextQuestion.position);
-    return nextQuestion;
-  });
+      STATEMENTS.upsertRotationState.run(normalizedType, nextQuestion.position);
 
-  return fetch();
+      logger.info('Retrieved next question from rotation', {
+        questionId: nextQuestion.question_id,
+        type: normalizedType,
+        position: nextQuestion.position,
+        lastPosition,
+        wrapped
+      });
+
+      return nextQuestion;
+    });
+
+    return fetch();
+  } catch (error) {
+    logger.error('Failed to get next question from rotation', { error, type: normalizedType });
+    throw error;
+  }
 };

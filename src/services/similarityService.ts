@@ -6,6 +6,7 @@
 
 import { listQuestions } from './questionService.js';
 import type { QuestionType } from './questionService.js';
+import logger from '../utils/logger.js';
 
 export interface SimilarityMatch {
   questionId: string;
@@ -95,23 +96,57 @@ export const findSimilarQuestions = (
   threshold: number = 0.7,
   limit: number = 5
 ): SimilarityMatch[] => {
-  const questions = listQuestions(type);
-  const matches: SimilarityMatch[] = [];
+  try {
+    logger.debug('Starting similarity search', {
+      type,
+      threshold,
+      limit,
+      textLength: text.length
+    });
 
-  for (const question of questions) {
-    const score = calculateSimilarity(text, question.text);
-    
-    if (score >= threshold) {
-      matches.push({
-        questionId: question.question_id,
-        text: question.text,
-        similarityScore: score,
+    const questions = listQuestions(type);
+    const matches: SimilarityMatch[] = [];
+
+    for (const question of questions) {
+      const score = calculateSimilarity(text, question.text);
+
+      if (score >= threshold) {
+        matches.push({
+          questionId: question.question_id,
+          text: question.text,
+          similarityScore: score,
+        });
+      }
+    }
+
+    // Sort by similarity score (highest first) and limit results
+    matches.sort((a, b) => b.similarityScore - a.similarityScore);
+    const results = matches.slice(0, limit);
+
+    if (results.length > 0) {
+      logger.info('Found similar questions', {
+        type,
+        matchCount: results.length,
+        totalQuestionsChecked: questions.length,
+        threshold,
+        highestScore: results[0]?.similarityScore
+      });
+    } else {
+      logger.info('No similar questions found', {
+        type,
+        totalQuestionsChecked: questions.length,
+        threshold
       });
     }
-  }
 
-  // Sort by similarity score (highest first) and limit results
-  matches.sort((a, b) => b.similarityScore - a.similarityScore);
-  
-  return matches.slice(0, limit);
+    return results;
+  } catch (error) {
+    logger.error('Failed to find similar questions', {
+      error,
+      type,
+      threshold,
+      limit
+    });
+    throw error;
+  }
 };
