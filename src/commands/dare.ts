@@ -74,13 +74,6 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  logger.info('Dare question served', {
-    questionId: question.question_id,
-    userId: interaction.user.id,
-    guildId: interaction.guildId,
-    channelId: interaction.channelId,
-  });
-
   try {
     const embed = buildQuestionEmbed({
       question,
@@ -93,9 +86,11 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
       allowedMentions: { parse: [] },
     });
 
-    logger.debug('Dare question reply sent successfully', {
+    logger.info('Dare question served', {
       questionId: question.question_id,
       userId: interaction.user.id,
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
     });
   } catch (error) {
     logger.error('Failed to send dare question reply', {

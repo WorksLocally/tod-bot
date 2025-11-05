@@ -74,13 +74,6 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
     return;
   }
 
-  logger.info('Truth question served', {
-    questionId: question.question_id,
-    userId: interaction.user.id,
-    guildId: interaction.guildId,
-    channelId: interaction.channelId,
-  });
-
   try {
     const embed = buildQuestionEmbed({
       question,
@@ -93,9 +86,11 @@ export const execute = async (interaction: ChatInputCommandInteraction): Promise
       allowedMentions: { parse: [] },
     });
 
-    logger.debug('Truth question reply sent successfully', {
+    logger.info('Truth question served', {
       questionId: question.question_id,
       userId: interaction.user.id,
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
     });
   } catch (error) {
     logger.error('Failed to send truth question reply', {

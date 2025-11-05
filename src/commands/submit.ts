@@ -187,7 +187,7 @@ export const execute = async (
       approvalChannelId: config.approvalChannelId,
     });
 
-    logger.info('Submission created successfully', {
+    logger.info('Submission stored in database', {
       submissionId: submission.submission_id,
       type: questionType,
       userId: interaction.user.id,
