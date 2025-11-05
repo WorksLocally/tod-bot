@@ -18,6 +18,7 @@ import { executeDelete } from './question/delete.js';
 import { executeEdit } from './question/edit.js';
 import { executeList } from './question/list.js';
 import { executeView } from './question/view.js';
+import logger from '../utils/logger.js';
 
 export const data = new SlashCommandBuilder()
   .setName('question')
@@ -122,32 +123,64 @@ export const execute = async (
   _client: Client,
   config: BotConfig
 ): Promise<void> => {
+  const subcommand = interaction.options.getSubcommand();
+
+  logger.debug('Question command invoked', {
+    subcommand,
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+  });
+
   if (!(await ensurePrivileged(interaction, config))) {
+    logger.warn('Unprivileged user attempted to use question command', {
+      subcommand,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
     return;
   }
 
-  const subcommand = interaction.options.getSubcommand();
+  logger.info('Question command executed by privileged user', {
+    subcommand,
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+  });
 
-  switch (subcommand) {
-    case 'add':
-      await executeAdd(interaction);
-      break;
-    case 'delete':
-      await executeDelete(interaction);
-      break;
-    case 'edit':
-      await executeEdit(interaction);
-      break;
-    case 'list':
-      await executeList(interaction);
-      break;
-    case 'view':
-      await executeView(interaction);
-      break;
-    default:
-      await interaction.reply({
-        content: 'Unknown subcommand.',
-        flags: MessageFlags.Ephemeral,
-      });
+  try {
+    switch (subcommand) {
+      case 'add':
+        await executeAdd(interaction);
+        break;
+      case 'delete':
+        await executeDelete(interaction);
+        break;
+      case 'edit':
+        await executeEdit(interaction);
+        break;
+      case 'list':
+        await executeList(interaction);
+        break;
+      case 'view':
+        await executeView(interaction);
+        break;
+      default:
+        logger.warn('Unknown question subcommand', {
+          subcommand,
+          userId: interaction.user.id,
+          guildId: interaction.guildId,
+        });
+        await interaction.reply({
+          content: 'Unknown subcommand.',
+          flags: MessageFlags.Ephemeral,
+        });
+    }
+  } catch (error) {
+    logger.error('Error executing question subcommand', {
+      error,
+      subcommand,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
+    throw error;
   }
 };

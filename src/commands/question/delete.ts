@@ -6,6 +6,7 @@
 
 import { MessageFlags, ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import * as questionService from '../../services/questionService.js';
+import logger from '../../utils/logger.js';
 
 /**
  * Handles the 'delete' subcommand for /question.
@@ -28,14 +29,32 @@ export const executeDelete = async (
 ): Promise<void> => {
   const questionId = interaction.options.getString('id', true).toUpperCase();
 
+  logger.debug('Delete subcommand invoked', {
+    questionId,
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+  });
+
   const question = questionService.getQuestionById(questionId);
   if (!question) {
+    logger.warn('Attempted to delete non-existent question', {
+      questionId,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
     await interaction.reply({
       content: `Question \`${questionId}\` was not found.`,
       flags: MessageFlags.Ephemeral,
     });
     return;
   }
+
+  logger.info('Question delete confirmation displayed', {
+    questionId,
+    type: question.type,
+    userId: interaction.user.id,
+    guildId: interaction.guildId,
+  });
 
   // Create confirmation buttons
   const confirmButton = new ButtonBuilder()
@@ -54,13 +73,28 @@ export const executeDelete = async (
   // Truncate question text for display (max 100 chars, truncate at 97 + ellipsis)
   const MAX_DISPLAY_LENGTH = 100;
   const TRUNCATE_LENGTH = 97;
-  const displayText = question.text.length > MAX_DISPLAY_LENGTH 
-    ? `${question.text.slice(0, TRUNCATE_LENGTH)}...` 
+  const displayText = question.text.length > MAX_DISPLAY_LENGTH
+    ? `${question.text.slice(0, TRUNCATE_LENGTH)}...`
     : question.text;
 
-  await interaction.reply({
-    content: `Are you sure you want to delete this question?\n\n**[${question.type.toUpperCase()}]** ${displayText}\n**ID:** ${questionId}`,
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  });
+  try {
+    await interaction.reply({
+      content: `Are you sure you want to delete this question?\n\n**[${question.type.toUpperCase()}]** ${displayText}\n**ID:** ${questionId}`,
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    });
+
+    logger.debug('Delete confirmation message sent successfully', {
+      questionId,
+      userId: interaction.user.id,
+    });
+  } catch (error) {
+    logger.error('Failed to send delete confirmation message', {
+      error,
+      questionId,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+    });
+    throw error;
+  }
 };
