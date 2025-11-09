@@ -231,12 +231,7 @@ const initializeQotdScheduler = (client: Client): void => {
     return;
   }
 
-  // Validate cron expression before scheduling
   const cronExpression = '0 18 * * *';
-  if (!cron.validate(cronExpression)) {
-    logger.error('Invalid cron expression for QOTD scheduler', { cronExpression });
-    return;
-  }
 
   // Schedule QOTD to post at 6pm UTC daily (cron: '0 18 * * *')
   client.qotdTask = cron.schedule(cronExpression, async () => {
