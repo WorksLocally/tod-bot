@@ -6,7 +6,7 @@
  */
 
 import { Client, Collection, GatewayIntentBits, Partials, Events, MessageFlags } from 'discord.js';
-import cron from 'node-cron';
+import cron, { type ScheduledTask } from 'node-cron';
 import config from './config/env.js';
 import { loadCommandModules } from './handlers/commandLoader.js';
 import type { CommandModule } from './handlers/commandLoader.js';
@@ -22,6 +22,7 @@ declare module 'discord.js' {
   interface Client {
     commands: Collection<string, CommandModule>;
     buttonHandlers: Map<string | ((customId: string) => boolean), ButtonHandler>;
+    qotdTask?: ScheduledTask;
   }
 }
 
@@ -230,8 +231,10 @@ const initializeQotdScheduler = (client: Client): void => {
     return;
   }
 
+  const cronExpression = '0 18 * * *';
+
   // Schedule QOTD to post at 6pm UTC daily (cron: '0 18 * * *')
-  cron.schedule('0 18 * * *', async () => {
+  client.qotdTask = cron.schedule(cronExpression, async () => {
     logger.info('Running scheduled Question of The Day post');
     try {
       await postQuestionOfTheDay(client);
@@ -239,10 +242,16 @@ const initializeQotdScheduler = (client: Client): void => {
       logger.error('Failed to post scheduled Question of The Day', { error });
     }
   }, {
-    timezone: 'Etc/UTC'
+    timezone: 'UTC'
   });
 
-  logger.info('Question of The Day scheduler initialized (daily at 6pm UTC)');
+  // Verify the task was created and log status
+  logger.info('Question of The Day scheduler initialized successfully', {
+    schedule: cronExpression,
+    timezone: 'UTC',
+    nextRun: 'Daily at 18:00 UTC (6pm UTC)',
+    status: client.qotdTask.getStatus()
+  });
 };
 
 // Start the bot

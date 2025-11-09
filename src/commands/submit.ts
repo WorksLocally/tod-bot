@@ -141,7 +141,7 @@ export const execute = async (
       guildId: interaction.guildId,
       type: questionType,
       similarCount: similarQuestions.length,
-      topSimilarity: similarQuestions[0]?.similarity,
+      topSimilarity: similarQuestions[0]?.similarityScore,
     });
     const similarityText = formatSimilarQuestions(similarQuestions);
     const embed = buildSimilarityWarningEmbed(similarityText, sanitized);
