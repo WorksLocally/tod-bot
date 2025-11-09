@@ -230,8 +230,15 @@ const initializeQotdScheduler = (client: Client): void => {
     return;
   }
 
+  // Validate cron expression before scheduling
+  const cronExpression = '0 18 * * *';
+  if (!cron.validate(cronExpression)) {
+    logger.error('Invalid cron expression for QOTD scheduler', { cronExpression });
+    return;
+  }
+
   // Schedule QOTD to post at 6pm UTC daily (cron: '0 18 * * *')
-  cron.schedule('0 18 * * *', async () => {
+  const task = cron.schedule(cronExpression, async () => {
     logger.info('Running scheduled Question of The Day post');
     try {
       await postQuestionOfTheDay(client);
@@ -242,7 +249,15 @@ const initializeQotdScheduler = (client: Client): void => {
     timezone: 'Etc/UTC'
   });
 
-  logger.info('Question of The Day scheduler initialized (daily at 6pm UTC)');
+  // Start the task and verify it was created successfully
+  task.start();
+  
+  logger.info('Question of The Day scheduler initialized successfully', {
+    schedule: cronExpression,
+    timezone: 'Etc/UTC',
+    nextRun: 'Daily at 18:00 UTC (6pm UTC)',
+    status: task.getStatus()
+  });
 };
 
 // Start the bot
