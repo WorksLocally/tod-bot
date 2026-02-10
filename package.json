@@ -40,6 +40,13 @@
     "tsx": "^4.20.6"
   },
   "overrides": {
-    "undici": "6.23.0"
+    "undici": "6.23.0",
+    "lodash": "4.17.23"
+  },
+  "pnpm": {
+    "overrides": {
+      "undici": "6.23.0",
+      "lodash": "4.17.23"
+    }
   }
 }
