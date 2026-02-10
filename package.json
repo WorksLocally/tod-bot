@@ -23,7 +23,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.9.1",
     "better-sqlite3": "^12.4.1",
-    "discord.js": "14.23.2",
+    "discord.js": "14.25.1",
     "dotenv": "^16.4.5",
     "node-cron": "^4.2.1",
     "typescript": "^5.9.3",
@@ -38,5 +38,8 @@
     "eslint": "^9.38.0",
     "globals": "^16.4.0",
     "tsx": "^4.20.6"
+  },
+  "overrides": {
+    "undici": "6.23.0"
   }
 }
