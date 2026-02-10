@@ -58,7 +58,9 @@ const sanitizeMeta = (value: unknown, seen = new WeakSet<object>()): unknown => 
 };
 
 const logsDir = path.join(process.cwd(), 'logs');
+console.log(`[DEBUG] Logs directory: ${logsDir}`); // Debug log
 if (!fs.existsSync(logsDir)) {
+  console.log(`[DEBUG] Creating logs directory: ${logsDir}`); // Debug log
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
@@ -69,11 +71,11 @@ const logger = createLogger({
     format.timestamp(),
     format.printf((info) => {
       const { timestamp, level, message, stack, ...rest } = info;
-      
+
       // Fast path: skip sanitization and stringification if no metadata
       const hasMetadata = Object.keys(rest).length > 0;
       let restString = '';
-      
+
       if (hasMetadata) {
         const sanitized = sanitizeMeta(rest);
         // Only stringify if we have actual metadata after sanitization
@@ -81,7 +83,7 @@ const logger = createLogger({
           restString = ` ${JSON.stringify(sanitized)}`;
         }
       }
-      
+
       const base = `${timestamp} [${level.toUpperCase()}] ${message}${restString}`;
       if (stack && typeof stack === 'string') {
         return `${base}\n${stack}`;

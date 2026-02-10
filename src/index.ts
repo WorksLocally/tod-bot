@@ -55,7 +55,7 @@ const initializeClient = async (): Promise<void> => {
    * Collection of loaded slash command modules keyed by name.
    */
   const commands = await loadCommandModules();
-  
+
   /**
    * Mapping of button custom IDs or predicates to handler modules.
    */
@@ -78,6 +78,7 @@ const initializeClient = async (): Promise<void> => {
    * Logs a confirmation message when the bot successfully connects to Discord.
    */
   client.once(Events.ClientReady, (readyClient) => {
+    console.log(`[DEBUG] Logged in as ${readyClient.user.tag}`); // Debug log
     logger.info(`Logged in as ${readyClient.user.tag}`);
 
     // Initialize Question of The Day scheduler
@@ -88,9 +89,12 @@ const initializeClient = async (): Promise<void> => {
    * Routes incoming interactions to the relevant handlers.
    */
   client.on(Events.InteractionCreate, async (interaction) => {
+    console.log(`[DEBUG] Interaction received: ${interaction.id} type: ${interaction.type}`); // Debug log
     if (interaction.isChatInputCommand()) {
+      console.log(`[DEBUG] Command interaction: ${interaction.commandName}`); // Debug log
       const command = client.commands.get(interaction.commandName);
       if (!command) {
+        console.log(`[DEBUG] Command not found: ${interaction.commandName}`); // Debug log
         await interaction.reply({
           content: 'Command not found. Please try again later.',
           flags: MessageFlags.Ephemeral,
@@ -99,8 +103,11 @@ const initializeClient = async (): Promise<void> => {
       }
 
       try {
+        console.log(`[DEBUG] Executing command: ${interaction.commandName}`); // Debug log
         await command.execute(interaction, client, config);
+        console.log(`[DEBUG] Command executed successfully: ${interaction.commandName}`); // Debug log
       } catch (error) {
+        console.error(`[DEBUG] Error executing command ${interaction.commandName}:`, error); // Debug log
         logger.error(`Error executing command ${interaction.commandName}`, { error });
         if (interaction.deferred || interaction.replied) {
           await interaction.editReply({
@@ -117,6 +124,7 @@ const initializeClient = async (): Promise<void> => {
     }
 
     if (interaction.isButton()) {
+      console.log(`[DEBUG] Button interaction: ${interaction.customId}`); // Debug log
       // Attempt direct match first (O(1) lookup), then evaluate predicate-based handlers
       let handler = client.buttonHandlers.get(interaction.customId);
 
@@ -131,6 +139,7 @@ const initializeClient = async (): Promise<void> => {
       }
 
       if (!handler) {
+        console.log(`[DEBUG] Button handler not found: ${interaction.customId}`); // Debug log
         await interaction.reply({
           content: 'Button is not active.',
           flags: MessageFlags.Ephemeral,
@@ -141,6 +150,7 @@ const initializeClient = async (): Promise<void> => {
       try {
         await handler.execute(interaction, client, config);
       } catch (error) {
+        console.error(`[DEBUG] Error handling button ${interaction.customId}:`, error); // Debug log
         logger.error(`Error handling button ${interaction.customId}`, { error });
         if (!interaction.deferred && !interaction.replied) {
           await interaction.reply({
@@ -153,10 +163,11 @@ const initializeClient = async (): Promise<void> => {
     }
 
     if (interaction.isModalSubmit()) {
+      console.log(`[DEBUG] Modal submission: ${interaction.customId}`); // Debug log
       // Handle modal submissions for rejection reason
       if (interaction.customId.startsWith('approval_reject_modal:')) {
         const submissionId = interaction.customId.split(':')[1];
-        
+
         try {
           await handleRejectModalSubmit(interaction, client, submissionId);
         } catch (error) {
@@ -192,8 +203,12 @@ const initializeClient = async (): Promise<void> => {
 
   await client
     .login(config.token)
-    .then(() => logger.info('Login successful, Discord client initialised.'))
+    .then(() => {
+      console.log('[DEBUG] Login successful request completed'); // Debug log
+      logger.info('Login successful, Discord client initialised.');
+    })
     .catch((error) => {
+      console.error('[DEBUG] Failed to login to Discord:', error); // Debug log
       logger.error('Failed to login to Discord', { error });
       process.exitCode = 1;
     });
