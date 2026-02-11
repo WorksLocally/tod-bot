@@ -12,16 +12,14 @@ import logger from '../utils/logger.js';
 import config from '../config/env.js';
 
 const databaseDir = path.dirname(config.databasePath);
-console.log(`[DEBUG] Database path: ${config.databasePath}`); // Debug log
 if (!fs.existsSync(databaseDir)) {
-  console.log(`[DEBUG] Creating database directory: ${databaseDir}`); // Debug log
   fs.mkdirSync(databaseDir, { recursive: true });
 }
 
 /**
  * Singleton database connection leveraged by services for queries and transactions.
  */
-const db: Database.Database = new Database(config.databasePath, { verbose: console.log }); // Add verbose logging
+const db: Database.Database = new Database(config.databasePath);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');

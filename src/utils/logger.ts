@@ -58,9 +58,7 @@ const sanitizeMeta = (value: unknown, seen = new WeakSet<object>()): unknown => 
 };
 
 const logsDir = path.join(process.cwd(), 'logs');
-console.log(`[DEBUG] Logs directory: ${logsDir}`); // Debug log
 if (!fs.existsSync(logsDir)) {
-  console.log(`[DEBUG] Creating logs directory: ${logsDir}`); // Debug log
   fs.mkdirSync(logsDir, { recursive: true });
 }
 

@@ -2,7 +2,8 @@
   "apps": [
     {
       "name": "tod-bot",
-      "script": "./dist/src/index.js",
+      "script": "/home/ubuntu/.nvm/versions/node/v25.6.1/bin/node",
+      "args": "dist/src/index.js",
       "watch": true,
       "ignore_watch": [
         "logs",
@@ -15,6 +16,7 @@
       "instances": 1,
       "autorestart": true,
       "max_memory_restart": "1G",
+      "interpreter": "none",
       "env": {
         "NODE_ENV": "production"
       }
