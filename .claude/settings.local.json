@@ -12,7 +12,10 @@
       "Bash(pnpm audit:*)",
       "WebFetch(domain:github.com)",
       "WebSearch",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git remote:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push:*)"
     ]
   }
 }
