@@ -4,7 +4,7 @@
  * @module src/services/submissionService
  */
 
-import db from '../database/client.js';
+import db, { SQLITE_CONSTRAINT_UNIQUE } from '../database/client.js';
 import { generateSubmissionId } from '../utils/id.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import type { QuestionType } from './questionService.js';
@@ -123,7 +123,7 @@ export const createSubmission = ({ type, text, userId, guildId, approvalChannelI
       );
       inserted = true;
     } catch (error) {
-      if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+      if ((error as { errcode?: number }).errcode !== SQLITE_CONSTRAINT_UNIQUE) {
         logger.error('Failed to insert submission due to database error', {
           error,
           type,
@@ -144,7 +144,7 @@ export const createSubmission = ({ type, text, userId, guildId, approvalChannelI
     }
   }
 
-  const submission = STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord;
+  const submission = STATEMENTS.getSubmissionById.get(submissionId) as unknown as SubmissionRecord;
 
   logger.info('Successfully created submission', {
     submissionId,
@@ -194,7 +194,7 @@ export const updateSubmissionStatus = ({ submissionId, status, resolverId }: Upd
       });
     }
 
-    return info.changes;
+    return Number(info.changes);
   } catch (error) {
     logger.error('Failed to update submission status', {
       error,
@@ -236,7 +236,7 @@ export const setApprovalMessage = ({ submissionId, messageId, channelId }: SetAp
       });
     }
 
-    return info.changes;
+    return Number(info.changes);
   } catch (error) {
     logger.error('Failed to set approval message reference', {
       error,
@@ -256,7 +256,7 @@ export const setApprovalMessage = ({ submissionId, messageId, channelId }: SetAp
  */
 export const getSubmissionById = (submissionId: string): SubmissionRecord | undefined => {
   try {
-    const submission = STATEMENTS.getSubmissionById.get(submissionId) as SubmissionRecord | undefined;
+    const submission = STATEMENTS.getSubmissionById.get(submissionId) as unknown as SubmissionRecord | undefined;
 
     if (submission) {
       logger.debug('Retrieved submission by ID', {
@@ -282,7 +282,7 @@ export const getSubmissionById = (submissionId: string): SubmissionRecord | unde
  */
 export const listPendingSubmissions = (): SubmissionRecord[] => {
   try {
-    const submissions = STATEMENTS.listPendingSubmissions.all() as SubmissionRecord[];
+    const submissions = STATEMENTS.listPendingSubmissions.all() as unknown as SubmissionRecord[];
     logger.debug('Listed pending submissions', { count: submissions.length });
     return submissions;
   } catch (error) {

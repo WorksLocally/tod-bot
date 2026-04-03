@@ -11,18 +11,15 @@
     "dev": "tsx watch src/index.ts",
     "deploy:commands": "tsx scripts/deploy-commands.ts",
     "import:questions": "tsx scripts/import-questions.ts",
-    "postinstall": "npm rebuild better-sqlite3",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "engines": {
-    "node": ">=20.10 <26",
+    "node": ">=22.13 <26",
     "pnpm": ">=10.19.0"
   },
   "dependencies": {
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.9.1",
-    "better-sqlite3": "^12.6.2",
     "discord.js": "14.25.1",
     "dotenv": "^16.4.5",
     "node-cron": "^4.2.1",
@@ -40,13 +37,23 @@
     "tsx": "^4.20.6"
   },
   "overrides": {
-    "undici": "6.23.0",
-    "lodash": "4.17.23"
+    "undici": "^6.24.0",
+    "lodash": ">=4.18.0",
+    "minimatch": ">=9.0.7 <10",
+    "flatted": ">=3.4.2",
+    "picomatch": ">=4.0.4",
+    "ajv": "~6.14.0",
+    "brace-expansion": ">=2.0.3"
   },
   "pnpm": {
     "overrides": {
-      "undici": "6.23.0",
-      "lodash": "4.17.23"
+      "undici": "^6.24.0",
+      "lodash": ">=4.18.0",
+      "minimatch": ">=9.0.7 <10",
+      "flatted": ">=3.4.2",
+      "picomatch": ">=4.0.4",
+      "ajv": "~6.14.0",
+      "brace-expansion": ">=2.0.3"
     }
   }
 }

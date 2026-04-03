@@ -7,7 +7,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import logger from '../utils/logger.js';
 import config from '../config/env.js';
 
@@ -18,11 +18,29 @@ if (!fs.existsSync(databaseDir)) {
 
 /**
  * Singleton database connection leveraged by services for queries and transactions.
+ * Uses Node.js built-in node:sqlite (foreign keys enabled by default).
  */
-const db: Database.Database = new Database(config.databasePath);
+const db = new DatabaseSync(config.databasePath);
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+db.exec('PRAGMA journal_mode = WAL');
+
+/** SQLite extended error code for UNIQUE constraint violations. */
+export const SQLITE_CONSTRAINT_UNIQUE = 2067;
+
+/**
+ * Wraps a synchronous function in a SQLite transaction (BEGIN/COMMIT/ROLLBACK).
+ */
+export const transaction = <T>(fn: () => T): T => {
+  db.exec('BEGIN');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+};
 
 /**
  * Ensures that all required tables, indexes, and defaults exist before the bot runs.
@@ -101,13 +119,13 @@ interface ColumnInfo {
  * @returns True if migration is needed (old schema detected), false otherwise.
  */
 const needsPositionMigration = (): boolean => {
-  const indexes = db.prepare("PRAGMA index_list('questions')").all() as IndexInfo[];
+  const indexes = db.prepare("PRAGMA index_list('questions')").all() as unknown as IndexInfo[];
   return indexes.some((index) => {
     if (!index.unique) {
       return false;
     }
     const sanitizedName = index.name.replace(/'/g, "''");
-    const columns = db.prepare(`PRAGMA index_info('${sanitizedName}')`).all() as ColumnInfo[];
+    const columns = db.prepare(`PRAGMA index_info('${sanitizedName}')`).all() as unknown as ColumnInfo[];
     return columns.length === 1 && columns[0].name === 'position';
   });
 };
@@ -132,7 +150,7 @@ const needsPositionMigration = (): boolean => {
  * @throws {Error} If the migration fails at any step.
  */
 const migrateQuestionPositions = (): void => {
-  const migrate = db.transaction(() => {
+  transaction(() => {
     db.exec(`
       ALTER TABLE questions RENAME TO questions_old;
 
@@ -200,8 +218,6 @@ const migrateQuestionPositions = (): void => {
       DROP TABLE IF EXISTS question_position_map;
     `);
   });
-
-  migrate();
 };
 
 if (needsPositionMigration()) {

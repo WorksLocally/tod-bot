@@ -17,6 +17,7 @@ interface Question {
   question_id: string;
   text: string;
   type: QuestionType;
+  position: number;
 }
 
 // Cache the question component buttons - they never change
@@ -74,7 +75,7 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
     .setDescription(question.text)
     .setColor(typeMeta.color)
     .setFooter({
-      text: `ID: ${question.question_id}`,
+      text: `Question #${question.position} • ID: ${question.question_id}`,
     })
     .setTimestamp(new Date());
 

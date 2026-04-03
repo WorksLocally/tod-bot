@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api:*)",
+      "Bash(xargs grep:*)",
+      "Bash(pnpm why:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(npm view:*)",
+      "Bash(pnpm update:*)",
+      "Bash(pnpm audit:*)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "Bash(node:*)"
+    ]
+  }
+}

@@ -4,7 +4,7 @@
  * @module src/services/questionService
  */
 
-import db from '../database/client.js';
+import db, { transaction, SQLITE_CONSTRAINT_UNIQUE } from '../database/client.js';
 import { generateQuestionId } from '../utils/id.js';
 import { sanitizeText } from '../utils/sanitize.js';
 import { LRUCache } from '../utils/lruCache.js';
@@ -160,8 +160,8 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
     throw new Error('Question text cannot be empty.');
   }
 
-  const insert = db.transaction(() => {
-    const maxPosition = (STATEMENTS.getMaxPosition.get(questionType) as MaxPositionResult).maxPosition;
+  return transaction(() => {
+    const maxPosition = (STATEMENTS.getMaxPosition.get(questionType) as unknown as MaxPositionResult).maxPosition;
     const position = maxPosition + 1;
 
     let questionId: string = '';
@@ -180,7 +180,7 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
         );
         inserted = true;
       } catch (error) {
-        if ((error as { code?: string }).code !== 'SQLITE_CONSTRAINT_UNIQUE') {
+        if ((error as { errcode?: number }).errcode !== SQLITE_CONSTRAINT_UNIQUE) {
           logger.error('Failed to insert question due to database error', {
             error,
             type: questionType,
@@ -200,7 +200,7 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
       }
     }
 
-    const result = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion;
+    const result = STATEMENTS.getQuestionById.get(questionId) as unknown as StoredQuestion;
 
     // Cache the newly added question
     questionCache.set(questionId, result);
@@ -218,8 +218,6 @@ export const addQuestion = ({ type, text, createdBy }: AddQuestionParams): Store
 
     return result;
   });
-
-  return insert();
 };
 
 interface EditQuestionParams {
@@ -266,7 +264,7 @@ export const editQuestion = ({ questionId, text }: EditQuestionParams): StoredQu
     // Note: Using `.get()` for UPDATE ... RETURNING is intentional.
     // SQLite's RETURNING clause allows UPDATE to return the updated row as an object,
     // or `undefined` if no row matched. This is non-obvious, so we document it here.
-    const updated = STATEMENTS.updateQuestion.get(sanitizedText, questionId) as StoredQuestion | undefined;
+    const updated = STATEMENTS.updateQuestion.get(sanitizedText, questionId) as unknown as StoredQuestion | undefined;
 
     if (updated) {
       // Invalidate cache for this question
@@ -312,7 +310,7 @@ export const deleteQuestion = (questionId: string): number => {
       });
     }
 
-    return info.changes;
+    return Number(info.changes);
   } catch (error) {
     logger.error('Failed to delete question', { error, questionId });
     throw error;
@@ -334,7 +332,7 @@ export const getQuestionById = (questionId: string): StoredQuestion | undefined 
   }
 
   // Fetch from database and cache
-  const question = STATEMENTS.getQuestionById.get(questionId) as StoredQuestion | undefined;
+  const question = STATEMENTS.getQuestionById.get(questionId) as unknown as StoredQuestion | undefined;
   if (question) {
     questionCache.set(questionId, question);
     logger.debug('Question fetched from database and cached', { questionId, type: question.type });
@@ -356,10 +354,10 @@ export const listQuestions = (type?: QuestionType): StoredQuestion[] => {
     let questions: StoredQuestion[];
     if (type) {
       const normalized = normalizeType(type);
-      questions = STATEMENTS.listQuestionsByType.all(normalized) as StoredQuestion[];
+      questions = STATEMENTS.listQuestionsByType.all(normalized) as unknown as StoredQuestion[];
       logger.debug('Listed questions by type', { type: normalized, count: questions.length });
     } else {
-      questions = STATEMENTS.listQuestions.all() as StoredQuestion[];
+      questions = STATEMENTS.listQuestions.all() as unknown as StoredQuestion[];
       logger.debug('Listed all questions', { count: questions.length });
     }
     return questions;
@@ -397,15 +395,15 @@ export const getNextQuestion = (type: QuestionType): QuestionForRotation | null 
   const normalizedType = normalizeType(type);
 
   try {
-    const fetch = db.transaction(() => {
-      const state = STATEMENTS.getRotationState.get(normalizedType) as RotationStateResult | undefined;
+    return transaction(() => {
+      const state = STATEMENTS.getRotationState.get(normalizedType) as unknown as RotationStateResult | undefined;
       const lastPosition = state ? state.lastPosition : 0;
-      let nextQuestion = STATEMENTS.getNextQuestion.get(normalizedType, lastPosition) as QuestionForRotation | undefined;
+      let nextQuestion = STATEMENTS.getNextQuestion.get(normalizedType, lastPosition) as unknown as QuestionForRotation | undefined;
 
       let wrapped = false;
       if (!nextQuestion) {
         // Wrap around to the beginning
-        nextQuestion = STATEMENTS.getFirstQuestion.get(normalizedType) as QuestionForRotation | undefined;
+        nextQuestion = STATEMENTS.getFirstQuestion.get(normalizedType) as unknown as QuestionForRotation | undefined;
         wrapped = true;
 
         if (!nextQuestion) {
@@ -426,8 +424,6 @@ export const getNextQuestion = (type: QuestionType): QuestionForRotation | null 
 
       return nextQuestion;
     });
-
-    return fetch();
   } catch (error) {
     logger.error('Failed to get next question from rotation', { error, type: normalizedType });
     throw error;
