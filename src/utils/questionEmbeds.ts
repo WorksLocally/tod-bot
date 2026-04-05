@@ -75,7 +75,7 @@ export const buildQuestionEmbed = ({ question, requestedBy }: BuildQuestionEmbed
     .setDescription(question.text)
     .setColor(typeMeta.color)
     .setFooter({
-      text: `Index Position: ${question.position} • ID: ${question.question_id}`,
+      text: `#${question.position} • ID: ${question.question_id}`,
     })
     .setTimestamp(new Date());
 
