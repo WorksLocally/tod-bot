@@ -6,6 +6,9 @@
 
 import { MessageFlags, ChatInputCommandInteraction } from 'discord.js';
 import * as questionService from '../../services/questionService.js';
+import { findSimilarQuestions } from '../../services/similarityService.js';
+import { storePendingSubmission } from '../../utils/pendingSubmissionCache.js';
+import { formatSimilarQuestions, buildSimilarityWarningEmbed, buildAddSimilarityWarningButtons } from '../../utils/similarityWarning.js';
 import { buildQuestionDetailEmbed } from './shared.js';
 import logger from '../../utils/logger.js';
 
@@ -55,6 +58,41 @@ export const executeAdd = async (
     });
     await interaction.reply({
       content: 'Question text cannot be empty.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  const questionType = type as questionService.QuestionType;
+
+  // Check for similar questions before adding
+  const similarQuestions = findSimilarQuestions(trimmed, questionType, 0.7, 5);
+
+  if (similarQuestions.length > 0) {
+    logger.info('Similar questions found for direct add', {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      type: questionType,
+      similarCount: similarQuestions.length,
+      topSimilarity: similarQuestions[0]?.similarityScore,
+    });
+
+    const similarityText = formatSimilarQuestions(similarQuestions);
+    const embed = buildSimilarityWarningEmbed(similarityText, trimmed);
+
+    const pendingId = storePendingSubmission({
+      type: questionType,
+      text: trimmed,
+      userId: interaction.user.id,
+      guildId: interaction.guildId ?? undefined,
+      source: 'add',
+    });
+
+    const actionRow = buildAddSimilarityWarningButtons(pendingId);
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [actionRow],
       flags: MessageFlags.Ephemeral,
     });
     return;

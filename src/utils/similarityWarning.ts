@@ -78,3 +78,25 @@ export const buildSimilarityWarningButtons = (
 
   return new ActionRowBuilder<ButtonBuilder>().addComponents(submitButton, cancelButton);
 };
+
+/**
+ * Builds action buttons for similarity warning on direct question add.
+ *
+ * @param pendingId - The ID of the pending addition.
+ * @returns Action row with Add Anyway and Cancel buttons.
+ */
+export const buildAddSimilarityWarningButtons = (
+  pendingId: string
+): ActionRowBuilder<ButtonBuilder> => {
+  const addButton = new ButtonBuilder()
+    .setCustomId(`add_confirm:${pendingId}`)
+    .setLabel('Add Anyway')
+    .setStyle(ButtonStyle.Success);
+
+  const cancelButton = new ButtonBuilder()
+    .setCustomId('add_cancel')
+    .setLabel('Cancel')
+    .setStyle(ButtonStyle.Secondary);
+
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(addButton, cancelButton);
+};

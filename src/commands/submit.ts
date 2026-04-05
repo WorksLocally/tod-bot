@@ -152,6 +152,7 @@ export const execute = async (
       text: sanitized,
       userId: interaction.user.id,
       guildId: interaction.guildId ?? undefined,
+      source: 'submit',
     });
 
     const actionRow = buildSimilarityWarningButtons(pendingId);

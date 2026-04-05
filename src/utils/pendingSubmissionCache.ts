@@ -10,11 +10,14 @@ import { LRUCache } from './lruCache.js';
 import logger from './logger.js';
 import type { QuestionType } from '../services/questionService.js';
 
+export type PendingSource = 'submit' | 'add';
+
 export interface PendingSubmission {
   type: QuestionType;
   text: string;
   userId: string;
   guildId?: string;
+  source: PendingSource;
   timestamp: number;
 }
 
